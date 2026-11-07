@@ -1,6 +1,7 @@
 # Project: local-only folders
 fig/
 MATLAB_code/
+results/
 
 # Python bytecode and native extensions
 __pycache__/
