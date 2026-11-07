@@ -1,0 +1,207 @@
+# Quadrotor simulation and control (Python)
+
+Closed-loop simulation of a 12-state quadrotor following a virtual leader that moves at constant velocity. A PD position controller (outer loop) drives a PI attitude controller designed by pole placement (inner loop). The code is a port of a MATLAB model; the MATLAB simulations are kept locally in `MATLAB_code/`, which Git ignores.
+
+Status as of 2026-11-07: the code and figures described here were checked by running them. See [Verified behaviour](#verified-behaviour) and [Known limitations](#known-limitations).
+
+## Quick start
+
+```bash
+pip install numpy scipy matplotlib
+python main.py
+```
+
+Tested with Python 3.10.6, NumPy 1.26.4, SciPy 1.15.3 and Matplotlib 3.10.3. The project has no `requirements.txt`.
+
+- The simulation takes about 2 s. `plt.show()` then blocks until the plot windows are closed.
+- Figures go to `results/` relative to the current directory, so run from the repository root. Each run overwrites the tracked PNGs there.
+- `main.py` is the only place that sets up a scenario: initial state, reference velocity, wind, `t_max` and `hw`.
+
+## Repository layout
+
+| Path | Contents |
+|---|---|
+| `main.py` | Builds the objects, runs the simulation, prints final velocities, plots |
+| `lib/config.py` | `QuadrotorParams`, `SimulationConfig`, `ControllerConfig` (all parameters and gains) |
+| `lib/quadrotor.py` | `Quadrotor`: dynamics and one-period integration |
+| `lib/controllers.py` | `AttitudeController`, `PositionController`, `wrap_angle` |
+| `lib/reference.py` | `ConstantVelocityReference`: the virtual leader |
+| `lib/simulator.py` | `Simulation` loop and `SimulationResult` |
+| `lib/plotter.py` | `Plotter`: saves the 5 figures |
+| `results/` | Figures from the **current** code |
+| `fig/` | Local only, ignored by Git: older figures with faster attitude poles (see [Figures](#figures)) |
+| `MATLAB_code/` | Local only, ignored by Git: former MATLAB simulations |
+| `test/` | Empty; the project has no tests |
+
+## Data flow
+
+```text
+ConstantVelocityReference.generate(time) -> pr, vr, ar   (computed once, before the loop)
+
+every hw seconds, for k in range(allK):
+    PositionController.compute(pos, vel, pr[k], vr[k], ar[k]) -> T, angles_des
+    AttitudeController.compute(angles, rates, angles_des, hw) -> tau
+    Quadrotor.step(x, [T, *tau], t, hw, wind)                 -> next x
+```
+
+Inputs are held constant over each period (zero-order hold). `solve_ivp` integrates the plant with RK45, `rtol=1e-6`, `atol=1e-8`.
+
+## Conventions
+
+| Item | Definition |
+|---|---|
+| State `x` (12) | `[x, y, z, vx, vy, vz, phi, theta, psi, wx, wy, wz]`; angles in rad |
+| Input `u` (4) | `[T, tau1, tau2, tau3]` in N and N·m |
+| z axis | Up: gravity is `-g` on `vz` and thrust acts along +z at zero tilt |
+| `SimulationResult.X`, `pr`, `vr` | `allK + 1` columns, one per time sample |
+| `SimulationResult.U`, `angles_des` | `allK` columns; plot them against `time[:-1]` |
+| Attitude error | `e = angles - angles_des`; only the yaw error is wrapped |
+
+## Plant model
+
+```text
+dp  = v + w
+dv1 = T (cos psi sin theta cos phi + sin psi sin phi) / m
+dv2 = T (sin psi sin theta cos phi - cos psi sin phi) / m
+dv3 = T (cos theta cos phi) / m - g
+d(phi, theta, psi) = (wx, wy, wz)
+dwx = (wy wz (Jy - Jz) + tau1) / Jx
+dwy = (wx wz (Jz - Jx) + tau2) / Jy
+dwz = (wx wy (Jx - Jy) + tau3) / Jz
+```
+
+`w` is wind. It only shifts position (`dp = v + w`) and applies no force.
+
+| Parameter | Value |
+|---|---|
+| `m` | 1.9 kg |
+| `g` | 9.81 m/s² |
+| `Jx`, `Jy` | 21.6e-3 kg·m² |
+| `Jz` | 43.2e-3 kg·m² |
+| Hover thrust `m g` | 18.639 N |
+
+## Controllers
+
+### Outer loop: `PositionController`
+
+```text
+a_des = a_ref + kp (p_ref - p) + kd (v_ref - v)
+f     = m (a_des + [0, 0, g]),  with f_z >= 0.1 m g
+T     = clip(|f|, 0, 2 m g)     # T_max = 37.278 N
+fx_b  =  cos(psi_d) f_x + sin(psi_d) f_y
+fy_b  =  sin(psi_d) f_x - cos(psi_d) f_y
+phi_d   = arcsin(fy_b / |f|)    # then clipped to +/-30 deg
+theta_d = atan2(fx_b, f_z)      # then clipped to +/-30 deg
+```
+
+| Axis | `kp` | `kd` | Linear poles (`s² + kd s + kp`) |
+|---|---|---|---|
+| x, y | 4 | 4 | -2, -2 |
+| z | 6 | 5 | -2, -3 |
+
+### Inner loop: `AttitudeController`
+
+Each axis is an independent chain of angle, rate and integral of angle error, with `u_i = -k_angle e - k_rate w - k_int ei`. The integrator is forward Euler and updates after `u` is computed. Gyroscopic terms are cancelled when `cancel_coupling=True` (the default).
+
+`ControllerConfig.attitude_poles` holds 9 poles. **Their order matters**, because the code assigns them by index:
+
+| Axis | Indices | Poles | `k_angle` | `k_rate` | `k_int` |
+|---|---|---|---|---|---|
+| Roll | 0, 1, 6 | -10, -10.001, -100.5 | 45.578 | 2.603 | 217.102 |
+| Pitch | 2, 3, 7 | -10.002, -10, -100.006 | 45.367 | 2.592 | 216.056 |
+| Yaw | 4, 5, 8 | -10.002, -10.003, -100.07 | 90.804 | 5.187 | 432.519 |
+
+The gains are computed in the constructor with `scipy.signal.place_poles`, one axis at a time. The class docstring still says `K2 = place(Aa, Ba, Poles)`, but `Aa` and `Ba` are now only used to compute `closed_loop_poles`. Nothing checks that attribute automatically.
+
+## Default scenario (`main.py`)
+
+| Setting | Value |
+|---|---|
+| Duration, sampling time | `t_max = 20 s`, `hw = 0.002 s` (10,000 steps) |
+| Reference | `p0 = [0, 0, 0]`, `v_ref = [0, 0, 0.2]` m/s |
+| Initial drone position | `[0.5, -0.5, 0]` m, all other states zero |
+| Wind | `[0, 0, 0]` |
+| Yaw setpoint | 0 (not configurable from `main.py`) |
+
+## Verified behaviour
+
+All numbers below come from running the current code on 2026-11-07.
+
+**Default scenario**
+
+| Metric | Result |
+|---|---|
+| Final position error | about 0 (below 1e-5 m) |
+| Final velocity | `[0, 0, 0.2]` m/s |
+| Position error stays under 1 cm after | 3.13 s |
+| Peak speed by axis (x, y, z) | 0.400, 0.400, 0.226 m/s |
+| Peak tilt (roll, pitch) | 9.83°, 9.95° |
+| Thrust range | 18.606 to 21.230 N |
+| Peak torque (`tau1`, `tau2`, `tau3`) | 8.202, 8.300, 0 N·m |
+| Computed closed-loop poles | Equal to the requested poles |
+
+**Other cases**
+
+| Case | Result |
+|---|---|
+| Wind `[0.2, 0, 0]` m/s, 15 s | Constant x error of +0.2 m; `vx` settles at -0.2 m/s |
+| Start 10 m away in x, 10 s | Converges, but pitch peaks at 39.7°, altitude error reaches 2.30 m, `vz` reaches 3.66 m/s and `T` hits `T_max` for 0.44 s |
+| `hw` from 0.002 to 0.016 s, 3 s | Stable, peak tilt about 10° |
+| `hw` = 0.018 s | Diverges at t = 0.63 s |
+| `hw` = 0.02 s | Diverges at t = 0.26 s |
+
+The steady wind error matches the PD prediction, `(kd / kp) w` for each axis.
+
+## Figures
+
+`results/` matches the current code: all 5 figures were regenerated and are pixel-identical.
+
+| Figure | What it shows |
+|---|---|
+| `results/position.png` | x and y converge to the reference in about 3 s; z follows the 0.2 m/s ramp up to 4 m |
+| `results/velocity.png` | `vx` and `vy` peak at about ±0.4 m/s and return to 0; `vz` overshoots to 0.226 m/s with a small kink early on |
+| `results/angles.png` | Roll and pitch dip to about -10° and briefly reach +1.5°; attitude visibly lags its setpoint at the start; yaw stays at 0 |
+| `results/inputs.png` | Thrust starts at 21.2 N and settles at hover; `tau1` and `tau2` spike to about -8 N·m in the first instants; `tau3` stays at 0 |
+| `results/trajectory_3d.png` | The path from the start point joins the vertical reference line |
+
+`fig/` is local only and holds just `position`, `velocity` and `angles`. They come from an earlier design: running the current code with `attitude_poles` multiplied by 2 reproduces all three pixel for pixel. That design tracks attitude more tightly, with `vx` and `vy` peaking at 0.37 m/s, but tilt peaks slightly higher at 10.6°. The code never writes to `fig/`.
+
+## How to change things
+
+| To change | Edit |
+|---|---|
+| Scenario, wind, duration, sampling time | `main.py` |
+| Physical parameters | `QuadrotorParams` in `lib/config.py` |
+| Position gains, tilt limit, thrust limit | `ControllerConfig` in `lib/config.py` |
+| Attitude poles | `attitude_poles` in `lib/config.py`, keeping the index order above |
+| Reference trajectory | Add a class with `generate(time)` returning `pr, vr, ar`, each shaped `3 x (allK + 1)`, and use it in `main.py` |
+| Yaw setpoint | Pass `psi_des` to `pos_ctrl.compute` in `lib/simulator.py`; it currently always uses the default of 0 |
+| Disturbance force or drag | `Quadrotor.dynamics` in `lib/quadrotor.py` (the current `w` only affects position) |
+| New plot | Add a method to `Plotter` and call it from `plot_all` |
+
+**Check stability before changing `hw` or the poles.** For one axis, the sum of its pole magnitudes times `hw` should stay well below 2. This rule of thumb fits the tests: roll gives 120.5 × 0.016 = 1.93 (stable) and 120.5 × 0.018 = 2.17 (diverges).
+
+**Set `hw` carefully, because a divergent run may never finish.** `Simulation.run` has no divergence check, and the `hw = 0.02` run was still going when stopped after 90 s. If a run seems stuck, suspect `hw` or the poles first.
+
+## Known limitations
+
+**Behaviour**
+
+- **Tilt limit is not a hard limit.** It only clips the setpoint, so the actual tilt can exceed it (39.7° against 30° in the 10 m case).
+- **Altitude surges during large moves.** `T` is computed from the unclipped force. At 30° tilt, `T_max` gives about 32.3 N of vertical force against 18.6 N of weight, which fits the climb seen in the 10 m case.
+- **Attitude integrator has no anti-windup.** It keeps integrating while the setpoint is clipped.
+- **Steady wind causes a position offset.** The position loop has no integral term.
+- **Divergence is not detected.** `Simulation.run` has no check on the state, and `Quadrotor.step` ignores `sol.success`.
+
+**Model simplifications**
+
+- Euler angle rates are set equal to the body rates, which is only accurate near hover.
+- There are no torque limits, motor or rotor dynamics, motor mixing, or aerodynamic drag. The 8 N·m peak torque may not be achievable on real hardware.
+- Controllers use the exact state: no sensor noise, estimator or delay.
+- Only constant-velocity references exist, so `a_ref` is always zero.
+
+**Repository**
+
+- `.gitignore` excludes `__pycache__/`, `fig/` and `MATLAB_code/`. Older versions of `fig/` and the `.pyc` files remain in the Git history from the first commit.
+- There are no tests, and Git does not track the empty `test/` folder.
+- There is no pinned dependency list.
