@@ -202,6 +202,6 @@ The steady wind error matches the PD prediction, `(kd / kp) w` for each axis.
 
 **Repository**
 
-- `.gitignore` excludes `__pycache__/`, `fig/` and `MATLAB_code/`. Older versions of `fig/` and the `.pyc` files remain in the Git history from the first commit.
+- `.gitignore` excludes `fig/` and `MATLAB_code/`, plus standard Python, virtual environment, secrets, tool cache, IDE and OS files. Older versions of `fig/` and the `.pyc` files remain in the Git history from the first commit.
 - There are no tests, and Git does not track the empty `test/` folder.
 - There is no pinned dependency list.
