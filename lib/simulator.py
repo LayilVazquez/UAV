@@ -23,6 +23,7 @@ class SimulationResult:
 
 
 class Simulation:
+    DIVERGENCE_LIMIT = 1e3   # on |angles| [rad] and |angular rates| [rad/s]
 
     def __init__(self, drone: Quadrotor, reference: ConstantVelocityReference,
                  pos_ctrl: PositionController, att_ctrl: AttitudeController,
@@ -56,6 +57,12 @@ class Simulation:
 
             u = np.array([T, *tau])
             X[:, k + 1] = self.drone.step(x, u, time[k], hw, self.wind)
+
+            # A divergent run slows the integrator until it may never finish.
+            # Written as "not <" so that NaN also stops the run.
+            if not np.abs(X[6:12, k + 1]).max() < self.DIVERGENCE_LIMIT:
+                raise RuntimeError(f"The simulation diverged at t = {time[k + 1]:.3f} s. "
+                                   "Reduce hw or change the poles.")
 
             U[:, k] = u
             angles_des[:, k] = ang_d

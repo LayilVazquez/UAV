@@ -7,21 +7,33 @@ Status as of 2026-11-07: the code and figures described here were checked by run
 ## Quick start
 
 ```bash
-pip install numpy scipy matplotlib
-python main.py
+pip install numpy scipy matplotlib PySide6
+python gui.py     # graphical interface
+python main.py    # command line, default scenario
 ```
 
-Tested with Python 3.10.6, NumPy 1.26.4, SciPy 1.15.3 and Matplotlib 3.10.3. The project has no `requirements.txt`.
+Tested with Python 3.10.6, NumPy 1.26.4, SciPy 1.15.3, Matplotlib 3.10.3 and PySide6 6.12.0. The project has no `requirements.txt`.
 
-- The simulation takes about 2 s. `plt.show()` then blocks until the plot windows are closed.
-- Figures go to `results/` relative to the current directory, so run from the repository root. Each run overwrites the PNGs there. The folder is ignored by Git and is created on the first run, so a fresh clone has no figures until then.
-- `main.py` is the only place that sets up a scenario: initial state, reference velocity, wind, `t_max` and `hw`.
+- The simulation takes about 2 s. With `main.py`, `plt.show()` then blocks until the plot windows are closed.
+- `main.py` writes its figures to `results/` relative to the current directory, so run from the repository root. Each run overwrites the PNGs there. The folder is ignored by Git and is created on the first run, so a fresh clone has no figures until then.
+- `main.py` sets up its scenario in code: initial state, reference velocity, wind, `t_max` and `hw`. `gui.py` has its own fields with the same default values.
+
+## Graphical interface
+
+`python gui.py` opens a window with the parameters on the left and 5 places for the figures on the right.
+
+- **Parameters:** drone (`m`, `g`, `Jx`, `Jy`, `Jz`), `t_max` and `hw`, the 9 attitude poles grouped by axis, position gains, tilt and thrust limits, drone start position, reference start and velocity, and wind. The fields start with the default values.
+- **Numbers only:** the fields accept digits, one `.` as decimal separator and a `-` sign where a negative value is allowed. Scientific notation is not accepted. Poles must be negative; `m`, the inertias, `t_max` and `hw` must be positive.
+- **Run simulation** clears the figures and runs in the background, so the window stays responsive. Incomplete or out-of-range fields are listed in a warning, and failures (divergence, repeated poles) appear in an error message.
+- **Save plots** is enabled only while figures are on screen. It asks for a folder, opening at `results/`, and asks before overwriting existing PNGs. Running from the GUI does not write to `results/` by itself.
+- There is no button to stop a run. Closing the window ends it.
 
 ## Repository layout
 
 | Path | Contents |
 |---|---|
 | `main.py` | Builds the objects, runs the simulation, prints final velocities, plots |
+| `gui.py` | PySide6 window: edits the parameters, runs the simulation, shows and saves the 5 figures |
 | `lib/config.py` | `QuadrotorParams`, `SimulationConfig`, `ControllerConfig` (all parameters and gains) |
 | `lib/quadrotor.py` | `Quadrotor`: dynamics and one-period integration |
 | `lib/controllers.py` | `AttitudeController`, `PositionController`, `wrap_angle` |
@@ -170,7 +182,8 @@ Figures are not stored in Git. On 2026-11-07, the local `results/` matched the c
 
 | To change | Edit |
 |---|---|
-| Scenario, wind, duration, sampling time | `main.py` |
+| Scenario, wind, duration, sampling time | The fields in `gui.py`, or `main.py` |
+| Fields shown in the GUI | `field_groups` in `gui.py` |
 | Physical parameters | `QuadrotorParams` in `lib/config.py` |
 | Position gains, tilt limit, thrust limit | `ControllerConfig` in `lib/config.py` |
 | Attitude poles | `attitude_poles` in `lib/config.py`, keeping the index order above |
@@ -181,7 +194,7 @@ Figures are not stored in Git. On 2026-11-07, the local `results/` matched the c
 
 **Check stability before changing `hw` or the poles.** For one axis, the sum of its pole magnitudes times `hw` should stay well below 2. This rule of thumb fits the tests: roll gives 120.5 × 0.016 = 1.93 (stable) and 120.5 × 0.018 = 2.17 (diverges).
 
-**Set `hw` carefully, because a divergent run may never finish.** `Simulation.run` has no divergence check, and the `hw = 0.02` run was still going when stopped after 90 s. If a run seems stuck, suspect `hw` or the poles first.
+**Divergent runs stop with an error.** `Simulation.run` raises `RuntimeError` when any angle or angular rate exceeds `Simulation.DIVERGENCE_LIMIT` (1000 rad or rad/s) or becomes NaN. Without this check, the `hw = 0.02` run was still going when stopped after 90 s. With it, the divergent cases tried (`hw` = 0.018 and 0.02, poles multiplied by 20 and 100) stop in under 0.1 s.
 
 ## Known limitations
 
@@ -191,7 +204,7 @@ Figures are not stored in Git. On 2026-11-07, the local `results/` matched the c
 - **Altitude surges during large moves.** `T` is computed from the unclipped force. At 30° tilt, `T_max` gives about 32.3 N of vertical force against 18.6 N of weight, which fits the climb seen in the 10 m case.
 - **Attitude integrator has no anti-windup.** It keeps integrating while the setpoint is clipped.
 - **Steady wind causes a position offset.** The position loop has no integral term.
-- **Divergence is not detected.** `Simulation.run` has no check on the state, and `Quadrotor.step` ignores `sol.success`.
+- **Divergence is detected only on attitude.** `Simulation.run` checks angles and angular rates, not position or velocity, and `Quadrotor.step` ignores `sol.success`.
 
 **Model simplifications**
 
