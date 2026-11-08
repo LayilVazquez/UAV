@@ -36,7 +36,8 @@ class Simulation:
         self.x0 = np.asarray(x0, dtype=float)
         self.wind = np.zeros(3) if wind is None else np.asarray(wind, dtype=float)
 
-    def run(self, verbose=True) -> SimulationResult:
+    def run(self, verbose=True, on_step=None) -> SimulationResult:
+        """on_step(k, allK) is called before each step; it may raise to abort the run."""
         hw, allK, time = self.cfg.hw, self.cfg.allK, self.cfg.time
         pr, vr, ar = self.reference.generate(time)
 
@@ -47,6 +48,8 @@ class Simulation:
         self.att_ctrl.reset()
 
         for k in range(allK):
+            if on_step:
+                on_step(k, allK)
             x = X[:, k]
             pos, vel, ang, rates = x[0:3], x[3:6], x[6:9], x[9:12]
 

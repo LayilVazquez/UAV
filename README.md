@@ -7,33 +7,40 @@ Status as of 2026-11-07: the code and figures described here were checked by run
 ## Quick start
 
 ```bash
-pip install numpy scipy matplotlib PySide6
-python main.py                       # graphical interface
-python test/run_default_scenario.py  # default scenario, no interface
+pip install -r requirements.txt
+python main.py
 ```
 
-Tested with Python 3.10.6, NumPy 1.26.4, SciPy 1.15.3, Matplotlib 3.10.3 and PySide6 6.12.0. The project has no `requirements.txt`.
+That installs the dependencies and opens the simulator. To run the default scenario without the interface, use `python test/run_default_scenario.py`.
+
+`requirements.txt` pins the tested versions: NumPy 1.26.4, SciPy 1.15.3, Matplotlib 3.10.3 and PySide6 6.12.0, with Python 3.10.6. On a much newer Python those pins may fail to install; removing the `==` versions lets pip pick compatible ones, which have not been tested.
 
 - The simulation takes about 2 s. With `test/run_default_scenario.py`, `plt.show()` then blocks until the plot windows are closed.
 - `test/run_default_scenario.py` writes its figures to `results/` relative to the current directory, so run it from the repository root. Each run overwrites the PNGs there. The folder is ignored by Git and is created on the first run, so a fresh clone has no figures until then.
-- `test/run_default_scenario.py` sets up its scenario in code: initial state, reference velocity, wind, `t_max` and `hw`. The fields in `main.py` start with the same values.
+- `test/run_default_scenario.py` sets up its scenario in code: initial state, reference velocity, wind, `t_max` and `hw`. The fields in the window start with the same values.
 
 ## Graphical interface
 
-`python main.py` opens a window with the parameters on the left and 5 places for the figures on the right.
+`python main.py` opens a dark window with a glossy, crystal look inspired by Windows XP, with the parameters on the left and 5 places for the figures on the right.
 
 - **Parameters:** drone (`m`, `g`, `Jx`, `Jy`, `Jz`), `t_max` and `hw`, the 9 attitude poles grouped by axis, position gains, tilt and thrust limits, the initial conditions of the drone (position only; the other states start at zero), the reference (initial position and velocity), and wind. The fields start with the default values.
 - **Numbers only:** the fields accept digits, one `.` as decimal separator and a `-` sign where a negative value is allowed. Scientific notation is not accepted. Poles must be negative; `m`, the inertias, `t_max` and `hw` must be positive.
-- **Run simulation** clears the figures and runs in the background, so the window stays responsive. Incomplete or out-of-range fields are listed in a warning, and failures (divergence, repeated poles) appear in an error message.
+- **Run simulation** (green) clears the figures and runs in the background, so the window stays responsive. Incomplete or out-of-range fields are listed in a warning, and failures (divergence, repeated poles) appear in an error message.
 - **Moving in the plots:** each plot has a Matplotlib toolbar with pan, zoom, back, forward, home (restores the original view) and a save button for that plot's current view. Drag with the mouse to rotate the 3D plot.
-- **Save plots** is enabled only while figures are on screen. It saves all 5 at full size with their original view, whatever zoom is on screen. It asks for a folder, opening at `results/`, and asks before overwriting existing PNGs. Running from the GUI does not write to `results/` by itself.
-- There is no button to stop a run. Closing the window ends it.
+- **Save plots** (yellow) is enabled only while figures are on screen. It saves all 5 at full size with their original view, whatever zoom is on screen. It asks for a folder, opening at `results/`, and asks before overwriting existing PNGs. Running from the GUI does not write to `results/` by itself.
+- **Progress** appears as a percentage in the status bar at the bottom of the window.
+- **Stop** (red) is enabled only during a run. It ends the run and shows no plots. Closing the window also ends a run.
 
 ## Repository layout
 
 | Path | Contents |
 |---|---|
-| `main.py` | PySide6 window: edits the parameters, runs the simulation, shows and saves the 5 figures |
+| `main.py` | Starts the window |
+| `requirements.txt` | Pinned dependencies |
+| `lib/gui/window.py` | `MainWindow`: parameters, buttons, background run, saving |
+| `lib/gui/fields.py` | Labels, default values and allowed ranges of the text fields |
+| `lib/gui/plot_slot.py` | `PlotSlot`: one interactive figure with its toolbar |
+| `lib/gui/style.py` | Dark crystal theme and button colours |
 | `test/run_default_scenario.py` | Runs the default scenario without the interface, prints final velocities, plots. It is a script, not an automated test |
 | `lib/config.py` | `QuadrotorParams`, `SimulationConfig`, `ControllerConfig` (all parameters and gains) |
 | `lib/quadrotor.py` | `Quadrotor`: dynamics and one-period integration |
@@ -133,7 +140,7 @@ The gains are computed in the constructor with `scipy.signal.place_poles`, one a
 | Reference | `p0 = [0, 0, 0]`, `v_ref = [0, 0, 0.2]` m/s |
 | Initial drone position | `[0.5, -0.5, 0]` m, all other states zero |
 | Wind | `[0, 0, 0]` |
-| Yaw setpoint | 0 (not configurable from `main.py`) |
+| Yaw setpoint | 0 (not configurable from the window) |
 
 ## Verified behaviour
 
@@ -183,11 +190,12 @@ Figures are not stored in Git. On 2026-11-07, the local `results/` matched the c
 | To change | Edit |
 |---|---|
 | Scenario, wind, duration, sampling time | The fields in the window, or `test/run_default_scenario.py` |
-| Fields shown in the window | `field_groups` in `main.py` |
+| Fields shown in the window | `field_groups` in `lib/gui/fields.py` |
+| Colours and look of the window | `lib/gui/style.py` |
 | Physical parameters | `QuadrotorParams` in `lib/config.py` |
 | Position gains, tilt limit, thrust limit | `ControllerConfig` in `lib/config.py` |
 | Attitude poles | `attitude_poles` in `lib/config.py`, keeping the index order above |
-| Reference trajectory | Add a class with `generate(time)` returning `pr, vr, ar`, each shaped `3 x (allK + 1)`, and use it in `main.py` |
+| Reference trajectory | Add a class with `generate(time)` returning `pr, vr, ar`, each shaped `3 x (allK + 1)`, and use it in `MainWindow.simulate` in `lib/gui/window.py` |
 | Yaw setpoint | Pass `psi_des` to `pos_ctrl.compute` in `lib/simulator.py`; it currently always uses the default of 0 |
 | Disturbance force or drag | `Quadrotor.dynamics` in `lib/quadrotor.py` (the current `w` only affects position) |
 | New plot | Add a method to `Plotter` and call it from `plot_all` |
@@ -217,4 +225,3 @@ Figures are not stored in Git. On 2026-11-07, the local `results/` matched the c
 
 - `.gitignore` excludes `fig/`, `MATLAB_code/` and `results/`, plus standard Python, virtual environment, secrets, tool cache, IDE and OS files. Older copies of `fig/`, `results/` and the `.pyc` files remain in the Git history.
 - There are no automated tests.
-- There is no pinned dependency list.
