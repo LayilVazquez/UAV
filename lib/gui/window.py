@@ -26,6 +26,8 @@ from lib.simulation.plotter import Plotter
 from lib.gui.fields import field_groups
 from lib.gui.plot_slot import PlotSlot
 
+FIELD_WIDTH = 100   # pixels, enough for values such as -100.006
+
 FIGURES = {"Position": "position.png", "Velocity": "velocity.png", "Euler angles": "angles.png",
            "Control inputs": "inputs.png", "3D trajectory": "trajectory_3d.png"}
 
@@ -58,7 +60,7 @@ class MainWindow(QMainWindow):
         scroll = QScrollArea()
         scroll.setWidget(form_panel)
         scroll.setWidgetResizable(True)
-        scroll.setMinimumWidth(520)
+        scroll.setMinimumWidth(430)
 
         self.run_button = self.make_button("Run simulation", "run", self.run_simulation)
         self.stop_button = self.make_button("Stop", "stop", self.stop_simulation)
@@ -103,6 +105,7 @@ class MainWindow(QMainWindow):
         validator.setLocale(locale)
         field = QLineEdit(f"{default:.9g}")
         field.setValidator(validator)
+        field.setFixedWidth(FIELD_WIDTH)
         self.fields[key] = (label, field)
         return field
 

@@ -23,7 +23,7 @@ That installs the dependencies and opens the simulator. To run the default scena
 
 `python main.py` opens a dark window with a glossy, crystal look inspired by Windows XP, with the parameters on the left and 5 places for the figures on the right.
 
-- **Parameters:** drone (`m`, `g`, `Jx`, `Jy`, `Jz`), `t_max` and `hw`, the 9 attitude poles grouped by axis, position gains, tilt and thrust limits, the initial conditions of the drone (position only; the other states start at zero), the reference (initial position and velocity), and wind. The fields start with the default values.
+- **Parameters:** drone (`m`, `g`, `Jx`, `Jy`, `Jz`), `t_max` and `hw`, the 9 attitude poles grouped by axis, position gains, tilt and thrust limits, the initial conditions of the drone (position only; the other states start at zero), the reference (initial position and velocity), and wind. The fields are short and start with the default values.
 - **Numbers only:** the fields accept digits, one `.` as decimal separator and a `-` sign where a negative value is allowed. Scientific notation is not accepted. Poles must be negative; `m`, the inertias, `t_max` and `hw` must be positive.
 - **Run simulation** (green) clears the figures and runs in the background, so the window stays responsive. Incomplete or out-of-range fields are listed in a warning, and failures (divergence, repeated poles) appear in an error message.
 - **Moving in the plots:** each plot has a Matplotlib toolbar with pan, zoom, back, forward, home (restores the original view) and a save button for that plot's current view. Drag with the mouse to rotate the 3D plot.
@@ -191,7 +191,8 @@ Figures are not stored in Git. On 2026-11-07, the local `results/` matched the c
 |---|---|
 | Scenario, wind, duration, sampling time | The fields in the window, or `test/run_default_scenario.py` |
 | Fields shown in the window | `field_groups` in `lib/gui/fields.py` |
-| Colours and look of the window | `lib/gui/style.py` |
+| Colours, look and label size of the window | `lib/gui/style.py` (`LABEL_FONT` is the label size) |
+| Width of the text fields | `FIELD_WIDTH` in `lib/gui/window.py` |
 | Physical parameters | `QuadrotorParams` in `lib/simulation/config.py` |
 | Position gains, tilt limit, thrust limit | `ControllerConfig` in `lib/simulation/config.py` |
 | Attitude poles | `attitude_poles` in `lib/simulation/config.py`, keeping the index order above |
