@@ -11,6 +11,7 @@ TEXT = "#e8eef7"
 MUTED = "#9fb3cf"
 BORDER = "#4f6f9f"
 BLUE = "#245fc4"
+DARK_BLUE = "#0e2a68"
 
 
 def glass(base):
@@ -41,7 +42,7 @@ QLabel {{ background: transparent; }}
 QGroupBox {{ background: {glass(PANEL)}; border: 1px solid {BORDER}; border-radius: 8px;
              margin-top: 14px; padding-top: 8px; }}
 QGroupBox::title {{ subcontrol-origin: margin; left: 10px; padding: 2px 10px; border-radius: 6px;
-                    background: {glass(BLUE)}; font-weight: bold; }}
+                    background: {glass(DARK_BLUE)}; font-weight: bold; }}
 PlotSlot {{ background: {glass(PANEL)}; border: 1px solid {BORDER}; border-radius: 8px; }}
 
 QLineEdit {{ border: 1px solid {BORDER}; border-radius: 5px; padding: 3px 6px;
@@ -52,7 +53,7 @@ QLineEdit:focus {{ border: 1px solid #7fc4ff; }}
 QPushButton {{ background: {glass(BLUE)}; border: 1px solid {BORDER}; border-radius: 7px;
                padding: 7px 10px; font-weight: bold; }}
 QPushButton:hover {{ background: {glass(QColor(BLUE).lighter(115).name())}; }}
-{button_rules("run", "#16861a", "#ffffff")}
+{button_rules("run", "#0b5a10", "#ffffff")}
 {button_rules("save", "#e0ad00", "#1c1500")}
 {button_rules("stop", "#c01a1a", "#ffffff")}
 
