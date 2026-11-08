@@ -10,12 +10,12 @@ import numpy as np
 # Running a script from test/ puts test/ on the path, not the repository root
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from lib.config import QuadrotorParams, SimulationConfig, ControllerConfig
-from lib.quadrotor import Quadrotor
-from lib.reference import ConstantVelocityReference
-from lib.controllers import PositionController, AttitudeController
-from lib.simulator import Simulation
-from lib.plotter import Plotter
+from lib.simulation.config import QuadrotorParams, SimulationConfig, ControllerConfig
+from lib.simulation.quadrotor import Quadrotor
+from lib.simulation.reference import ConstantVelocityReference
+from lib.simulation.controllers import PositionController, AttitudeController
+from lib.simulation.simulator import Simulation
+from lib.simulation.plotter import Plotter
 
 
 def main():

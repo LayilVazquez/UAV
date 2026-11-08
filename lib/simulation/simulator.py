@@ -6,10 +6,10 @@ evaluated and the quadrotor ODE is integrated with the inputs held constant.
 from dataclasses import dataclass
 import numpy as np
 
-from lib.config import SimulationConfig
-from lib.quadrotor import Quadrotor
-from lib.reference import ConstantVelocityReference
-from lib.controllers import PositionController, AttitudeController
+from lib.simulation.config import SimulationConfig
+from lib.simulation.quadrotor import Quadrotor
+from lib.simulation.reference import ConstantVelocityReference
+from lib.simulation.controllers import PositionController, AttitudeController
 
 
 @dataclass

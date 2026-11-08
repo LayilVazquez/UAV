@@ -2,7 +2,7 @@
 fields.py
 The text fields of the window: labels, default values and allowed ranges.
 """
-from lib.config import QuadrotorParams, SimulationConfig, ControllerConfig
+from lib.simulation.config import QuadrotorParams, SimulationConfig, ControllerConfig
 
 POSITIVE = (1e-9, 1e6)
 NON_NEGATIVE = (0.0, 1e6)
@@ -17,7 +17,7 @@ def xyz(key, label, values, limits):
 
 
 def field_groups():
-    """(group title, [(key, label, default, (min, max))]), with defaults taken from lib/config.py."""
+    """(group title, [(key, label, default, (min, max))]), with defaults taken from lib/simulation/config.py."""
     p, s, c = QuadrotorParams(), SimulationConfig(), ControllerConfig()
     # attitude_poles is ordered by index, not by axis (see AttitudeController)
     poles = [(f"pole{i}", f"{axis} pole {n + 1}", c.attitude_poles[i], NEGATIVE)

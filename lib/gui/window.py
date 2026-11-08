@@ -17,12 +17,12 @@ from PySide6.QtWidgets import (QFileDialog, QFormLayout, QGridLayout, QGroupBox,
                                QLineEdit, QMainWindow, QMessageBox, QPushButton, QScrollArea,
                                QVBoxLayout, QWidget)
 
-from lib.config import QuadrotorParams, SimulationConfig, ControllerConfig
-from lib.quadrotor import Quadrotor
-from lib.reference import ConstantVelocityReference
-from lib.controllers import PositionController, AttitudeController
-from lib.simulator import Simulation
-from lib.plotter import Plotter
+from lib.simulation.config import QuadrotorParams, SimulationConfig, ControllerConfig
+from lib.simulation.quadrotor import Quadrotor
+from lib.simulation.reference import ConstantVelocityReference
+from lib.simulation.controllers import PositionController, AttitudeController
+from lib.simulation.simulator import Simulation
+from lib.simulation.plotter import Plotter
 from lib.gui.fields import field_groups
 from lib.gui.plot_slot import PlotSlot
 
@@ -58,7 +58,7 @@ class MainWindow(QMainWindow):
         scroll = QScrollArea()
         scroll.setWidget(form_panel)
         scroll.setWidgetResizable(True)
-        scroll.setMinimumWidth(360)
+        scroll.setMinimumWidth(520)
 
         self.run_button = self.make_button("Run simulation", "run", self.run_simulation)
         self.stop_button = self.make_button("Stop", "stop", self.stop_simulation)

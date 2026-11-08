@@ -12,6 +12,7 @@ MUTED = "#9fb3cf"
 BORDER = "#4f6f9f"
 BLUE = "#245fc4"
 DARK_BLUE = "#0e2a68"
+LABEL_FONT = "13pt"
 
 
 def glass(base):
@@ -37,10 +38,11 @@ STYLE = f"""
 * {{ font-family: Tahoma, "Segoe UI"; font-size: 9pt; color: {TEXT}; }}
 QMainWindow, QDialog {{ background: {BACKGROUND}; }}
 QScrollArea, QScrollArea > QWidget > QWidget {{ background: transparent; border: none; }}
-QLabel {{ background: transparent; }}
+QLabel {{ background: transparent; font-size: {LABEL_FONT}; }}
+QToolBar QLabel {{ font-size: 9pt; }}
 
 QGroupBox {{ background: {glass(PANEL)}; border: 1px solid {BORDER}; border-radius: 8px;
-             margin-top: 14px; padding-top: 8px; }}
+             font-size: {LABEL_FONT}; margin-top: 20px; padding-top: 12px; }}
 QGroupBox::title {{ subcontrol-origin: margin; left: 10px; padding: 2px 10px; border-radius: 6px;
                     background: {glass(DARK_BLUE)}; font-weight: bold; }}
 PlotSlot {{ background: {glass(PANEL)}; border: 1px solid {BORDER}; border-radius: 8px; }}

@@ -7,7 +7,7 @@ Inputs:
 """
 import numpy as np
 from scipy.integrate import solve_ivp
-from lib.config import QuadrotorParams
+from lib.simulation.config import QuadrotorParams
 
 
 class Quadrotor:

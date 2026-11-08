@@ -5,7 +5,7 @@ Plots of the simulation results.
 import os
 import numpy as np
 import matplotlib.pyplot as plt
-from lib.simulator import SimulationResult
+from lib.simulation.simulator import SimulationResult
 
 
 class Plotter:

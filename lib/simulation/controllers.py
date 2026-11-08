@@ -7,7 +7,7 @@ Outer loop : PD position/velocity controller that computes the thrust T
 """
 import numpy as np
 from scipy.signal import place_poles
-from lib.config import QuadrotorParams, ControllerConfig
+from lib.simulation.config import QuadrotorParams, ControllerConfig
 
 
 def wrap_angle(a):
