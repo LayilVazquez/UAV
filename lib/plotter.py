@@ -13,10 +13,12 @@ class Plotter:
     def __init__(self, result: SimulationResult, save_dir="results"):
         self.r = result
         self.save_dir = save_dir
+        self.figures = {}   # file name -> Figure
         os.makedirs(save_dir, exist_ok=True)
 
     def _save(self, fig, name):
         fig.tight_layout()
+        self.figures[name] = fig
         fig.savefig(os.path.join(self.save_dir, name), dpi=130)
 
     def plot_position(self):
