@@ -4,9 +4,25 @@ Closed-loop simulation of a 12-state quadrotor following a virtual leader that m
 
 Status as of 2026-11-07: the code and figures described here were checked by running them. See [Verified behaviour](#verified-behaviour) and [Known limitations](#known-limitations).
 
+## Requirements
+
+Install these before the quick start. The project was tested on 64-bit Windows 11 with these versions.
+
+| Software | Tested version | Download | Used for |
+|---|---|---|---|
+| Python | 3.10.6 | [python.org](https://www.python.org/downloads/release/python-3106/) | Running the code. Versions below 3.10 do not work with the pinned packages |
+| pip | Included with Python | Installed by the Python installer | Installing the packages in `requirements.txt` |
+| Git | 2.50.0 | [git-scm.com](https://git-scm.com/downloads) | Downloading the repository |
+
+- On Windows, select **Add Python 3.10 to PATH** in the Python installer. Without it, the `python` and `pip` commands are not found.
+- On Windows, nothing else is needed: the Python packages bring the libraries they use.
+- On Linux, which has not been tested, the interface may also need the system packages `libegl1` and `libxcb-cursor0`.
+
 ## Quick start
 
 ```bash
+git clone https://github.com/LayilVazquez/UAV.git
+cd UAV
 pip install -r requirements.txt
 python main.py
 ```
