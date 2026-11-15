@@ -10,11 +10,11 @@ Install these before the quick start. The project was tested on 64-bit Windows 1
 
 | Software | Tested version | Download | Used for |
 |---|---|---|---|
-| Python | 3.10.6 | [python.org](https://www.python.org/downloads/release/python-3106/) | Running the code. Versions below 3.10 do not work with the pinned packages |
+| Python | 3.15.2 | [python.org](https://www.python.org/downloads/) | Running the code. NumPy 2 and SciPy 1.16 need Python 3.11 or newer |
 | pip | Included with Python | Installed by the Python installer | Installing the packages in `requirements.txt` |
 | Git | 2.50.0 | [git-scm.com](https://git-scm.com/downloads) | Downloading the repository |
 
-- On Windows, select **Add Python 3.10 to PATH** in the Python installer. Without it, the `python` and `pip` commands are not found.
+- On Windows, select **Add Python 3.15 to PATH** in the Python installer. Without it, the `python` and `pip` commands are not found.
 - On Windows, nothing else is needed: the Python packages bring the libraries they use.
 - On Linux, which has not been tested, the interface may also need the system packages `libegl1` and `libxcb-cursor0`.
 
@@ -29,7 +29,7 @@ python main.py
 
 That installs the dependencies and opens the simulator. To run the default scenario without the interface, use `python test/run_default_scenario.py`.
 
-`requirements.txt` pins the tested versions: NumPy 1.26.4, SciPy 1.15.3, Matplotlib 3.10.3 and PySide6 6.12.0, with Python 3.10.6. On a much newer Python those pins may fail to install; removing the `==` versions lets pip pick compatible ones, which have not been tested.
+`requirements.txt` sets minimum versions: NumPy 2.0, SciPy 1.16, Matplotlib 3.10 and PySide6 6.12. The project was tested with NumPy 2.5.4, SciPy 1.18.1, Matplotlib 3.11.2 and PySide6 6.12.0 on Python 3.15.2.
 
 - The simulation takes about 2 s. With `test/run_default_scenario.py`, `plt.show()` then blocks until the plot windows are closed.
 - `test/run_default_scenario.py` writes its figures to `results/` relative to the current directory, so run it from the repository root. Each run overwrites the PNGs there. The folder is ignored by Git and is created on the first run, so a fresh clone has no figures until then.
@@ -52,7 +52,7 @@ That installs the dependencies and opens the simulator. To run the default scena
 | Path | Contents |
 |---|---|
 | `main.py` | Starts the window |
-| `requirements.txt` | Pinned dependencies |
+| `requirements.txt` | Minimum dependency versions |
 | `lib/gui/window.py` | `MainWindow`: parameters, buttons, background run, saving |
 | `lib/gui/fields.py` | Labels, default values and allowed ranges of the text fields |
 | `lib/gui/plot_slot.py` | `PlotSlot`: one interactive figure with its toolbar |
