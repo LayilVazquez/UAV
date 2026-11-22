@@ -18,7 +18,7 @@ The model and controllers of one quadrotor following a virtual leader. They are 
 | Method | Use |
 |---|---|
 | `compute(pos, vel, p_ref, v_ref, a_ref, psi_des=0)` | PD law, `a_des = a_ref + kp (p_ref - p) + kd (v_ref - v)`, then `thrust_and_angles(a_des)` |
-| `thrust_and_angles(a_des, psi_des=0)` | **Angle transformation**: turns the desired acceleration of a particle into the thrust `T` and the roll and pitch setpoints, with the tilt and thrust limits. With `psi_des = 0` and no saturation, it gives the same `T`, `rollref` and `pitchref` as the MATLAB flocking code. `lib/flocking` calls it directly |
+| `thrust_and_angles(a_des, psi_des=0)` | **Angle transformation**: turns the desired acceleration of a particle into the thrust `T` and the roll and pitch setpoints, with the tilt and thrust limits. With `psi_des = 0` and no saturation, it gives the same `T`, `rollref` and `pitchref` as the MATLAB flocking code. With `ControllerConfig.keep_altitude` (off by default, on in the formation tab), `T = f_z / (cos φ_d cos θ_d)`, capped at `T_max`, so a clipped tilt reduces the horizontal acceleration instead of the vertical one. `lib/flocking` and `lib/formation` call it directly |
 
 ## How the classes interact
 

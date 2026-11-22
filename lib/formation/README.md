@@ -79,10 +79,10 @@ This is solved with Brent's method (`FormationController.balanced_d_a`). The lef
 
 ### Initial conditions that test the avoidance
 
-The default scenario starts each UAV almost opposite its place in the octagon. The shape is turned by $`\alpha = 170^\circ`$ around the vertical, about the point $`c`$, and every other UAV starts 5 cm higher:
+The default scenario starts each UAV almost opposite its place in the octagon. The shape is turned by $`\alpha = 170^\circ`$ around the vertical, about the point $`c`$, with every UAV at the same altitude:
 
 ```math
-p_i(0) = c + R_z(\alpha) \left(h_i - \bar{h}\right) + 0.05 \left((i - 1) \bmod 2\right) e_3, \qquad
+p_i(0) = c + R_z(\alpha) \left(h_i - \bar{h}\right), \qquad
 c = (0, 0, 1)^\top,\ \alpha = 170^\circ,\ v_i(0) = 0 .
 ```
 
@@ -90,14 +90,22 @@ The formation term sends every UAV in a nearly straight line through the centre 
 
 | Run | Closest approach | Final formation error |
 |---|---|---|
-| Particles, with avoidance | 0.338 m | 0.003 m |
-| Particles, avoidance off ($`a = b \approx 0`$) | **0.091 m** (below the 0.2 m collision line) | 0 |
-| Quadrotors, with avoidance | 0.313 m | 0.004 m, final speed below 0.001 m/s (hover) |
-| Quadrotors, avoidance off | **0.078 m** (below the 0.2 m collision line) | 0 |
+| Particles, with avoidance | 0.313 m | below 0.0001 m |
+| Particles, avoidance off ($`a = b \approx 0`$) | **0.087 m** (below the 0.2 m collision line) | 0 |
+| Quadrotors, with avoidance | 0.284 m | 0.0003 m, final speed below 0.0001 m/s (hover) |
+| Quadrotors, avoidance off | **0.048 m** (below the 0.2 m collision line) | 0 |
 
 To reproduce the "off" rows, set `a` and `b` to a very small value, for example 0.000001. The tab's **Polygon and crossing start** button rewrites the table with this scenario for any number of UAVs.
 
-In the quadrotor runs, the common altitude rises from 1.02 m to about 1.6 m during the crossing, with or without avoidance. Nothing in the law fixes the altitude, only the relative positions, and the tilt and thrust limits break the balance between the UAVs while they are saturated. Particles keep their altitude. The peak tilt is 35.6°: the 30° limit clips the setpoint, not the actual angle.
+**Same altitude.** The offsets have $`h_{i,z} = 0`$ and all UAVs start at $`z = 1`$ m, so the law asks for no vertical motion: particles stay exactly at 1 m. On quadrotors, the 30° tilt limit is reached during the crossing. The thrust used to be computed from the unclipped force, $`T = m \lVert u_i + g e_3 \rVert`$, so a clipped tilt changed each UAV's vertical acceleration differently. The UAVs then spread vertically by up to 0.43 m and climbed to about 1.6 m. The formation tab therefore uses the altitude priority of `thrust_and_angles` (`keep_altitude = True`):
+
+```math
+T_i = \min\left(\frac{f_{i,z}}{\cos\phi_{d,i} \cos\theta_{d,i}},\ T_{max}\right), \qquad f_i = m \left(u_i + g e_3\right),
+```
+
+which gives exactly the requested vertical acceleration whenever $`T_i < T_{max}`$. When the tilt is clipped, the horizontal acceleration is reduced instead. When nothing is clipped, this is the same $`T`$ as before. With it, the UAVs stay within 0.04 m of each other in altitude during the crossing, and they end level (within 0.0003 m) at 0.88 m. They dip 12 cm because nothing in the law holds the absolute altitude, only the relative positions. The peak tilt is 35.6°: the 30° limit clips the setpoint, not the actual angle.
+
+The parameter search below was run before these two changes (5 cm stagger in the start, no altitude priority). The trends it shows still apply, but its numbers are from that version.
 
 **How the scenario was chosen, and its limits.** The defaults come from a parameter search on quadrotors over 30 s, mostly with the start turned by 183° (180° + 0.05 rad), the hardest case in which every path goes through the centre:
 
@@ -164,7 +172,7 @@ T_i = m \left\lVert u_i + g e_3 \right\rVert, \qquad
 \theta_{d,i} = \arctan\left(\frac{u_{i,1}}{u_{i,3} + g}\right), \qquad \psi_{d,i} = 0
 ```
 
-Each UAV's `AttitudeController` then tracks these angles. Python adds tilt and thrust limits, which the MATLAB code doesn't have.
+Each UAV's `AttitudeController` then tracks these angles. Python adds tilt and thrust limits, which the MATLAB code doesn't have. In this simulator, the thrust keeps the vertical force when the tilt is clipped (altitude priority, see [Same altitude](#initial-conditions-that-test-the-avoidance)).
 
 With UAV dynamics off, each UAV is an ideal particle, integrated with explicit Euler as in MATLAB:
 

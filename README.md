@@ -72,7 +72,7 @@ The defaults reproduce `Simulation04.m`: 6 UAVs, `t_max = 40 s`, `hw = 0.001 s`.
 
 ### Formation control tab
 
-The default scenario has 8 UAVs that start almost opposite their places, so their paths cross near the centre, and form a regular octagon of side 1 m where they hover. The avoidance keeps them apart: the closest approach is 0.313 m, compared with 0.078 m when it is off. The scenario uses a complete graph, Euclidean distance, `t_max = 30 s` and `hw = 0.01 s`, with the UAV parameters and poles of `FormationControlAvoidUAV02.m`. It takes about 4 s. The equations for the offsets and the results are in [`lib/formation/README.md`](lib/formation/README.md#desired-shape-the-offsets-h_i).
+The default scenario has 8 UAVs that start almost opposite their places, so their paths cross near the centre, and form a regular octagon of side 1 m where they hover. All UAVs fly at the same altitude. The avoidance keeps them apart: the closest approach is 0.284 m, compared with 0.048 m when it is off. The scenario uses a complete graph, Euclidean distance, `t_max = 30 s` and `hw = 0.01 s`, with the UAV parameters and poles of `FormationControlAvoidUAV02.m`. It takes about 4 s. The equations for the offsets and the results are in [`lib/formation/README.md`](lib/formation/README.md#desired-shape-the-offsets-h_i).
 
 - **UAVs table:** for each UAV, the initial position and velocity, and its formation offset `hx, hy, hz` [m].
 - **Desired shape:** the offsets follow a regular polygon in the xy plane with the **Polygon side**, and `h_1 = 0`. They are rewritten when the number of UAVs or the side changes, while typed initial positions are kept. **Polygon and crossing start** rewrites every row with the default scenario for the current number of UAVs.
@@ -263,7 +263,7 @@ Figures are not stored in Git. On 2026-11-07, the local `results/` matched the c
 **Behaviour**
 
 - **Tilt limit is not a hard limit.** It only clips the setpoint, so the actual tilt can exceed it (39.7° against 30° in the 10 m case).
-- **Altitude surges during large moves.** `T` is computed from the unclipped force. At 30° tilt, `T_max` gives about 32.3 N of vertical force against 18.6 N of weight, which fits the climb seen in the 10 m case.
+- **Altitude surges during large moves.** `T` is computed from the unclipped force. At 30° tilt, `T_max` gives about 32.3 N of vertical force against 18.6 N of weight, which fits the climb seen in the 10 m case. `ControllerConfig(keep_altitude=True)` keeps the vertical force when the tilt is clipped. The formation tab uses it, but this tab does not, so the results above are unchanged.
 - **Attitude integrator has no anti-windup.** It keeps integrating while the setpoint is clipped.
 - **Steady wind causes a position offset.** The position loop has no integral term.
 - **Divergence is detected only on attitude.** `Simulation.run` checks angles and angular rates, not position or velocity, and `Quadrotor.step` ignores `sol.success`.
