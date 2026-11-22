@@ -1,6 +1,6 @@
 """
 main.py
-Starts the simulator window, with one tab per simulator (single UAV, UAV flocking).
+Starts the simulator window, with one tab per simulator (single UAV, UAV flocking, formation control).
 The code lives in lib/; see the README of each subfolder.
 """
 import sys

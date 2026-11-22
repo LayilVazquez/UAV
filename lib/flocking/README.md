@@ -78,4 +78,4 @@ All UAVs share the same physical parameters and gains, so one `Quadrotor` and on
 - `thrust_and_angles` applies the tilt and thrust limits (30° and 2 m g by default) and keeps `f_z >= 0.1 m g`. MATLAB has no limits. To remove them, set Max tilt to 90 and a large thrust factor.
 - With a single UAV, MATLAB gives `u = 0`; here the UAV still follows `v0`.
 
-Used by: `lib/gui/flocking_tab.py` and `test/run_flocking_scenario.py`.
+Used by: `lib/gui/flocking_tab.py` and `test/run_flocking_scenario.py`. `lib/formation` reuses `phi`, `sigma_norm`, `FlockingSimulation` (which runs any controller with `reset(V0)` and `compute(P, V)`), `FlockingResult` and `FlockingPlotter`.

@@ -37,4 +37,4 @@ Simulation.run():
 
 `Simulation.run(on_step=...)` calls `on_step(k, allK)` before every step. The GUI uses it for progress and for the Stop button, which raises an exception from it. A run stops with `RuntimeError` when an angle or angular rate exceeds `Simulation.DIVERGENCE_LIMIT` or becomes NaN.
 
-Used by: `lib/gui/uav_tab.py`, `test/run_default_scenario.py` and `lib/flocking`.
+Used by: `lib/gui/uav_tab.py`, `test/run_default_scenario.py`, `lib/flocking` and `lib/formation`.
