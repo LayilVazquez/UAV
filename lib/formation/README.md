@@ -9,8 +9,106 @@ It is a port of `MATLAB_code/scr/Formation_Control_Avoid` (local only):
 | `FormationControlAvoid.m` | Particles | Euclidean | UAV dynamics off, σ-norm off |
 | `FormationControlAvoid02.m` | Particles | σ-norm | UAV dynamics off, σ-norm on |
 | `FormationControlAvoidUAV.m` | Quadrotors | Euclidean | UAV dynamics on, σ-norm off |
-| `FormationControlAvoidUAV02.m` | Quadrotors | σ-norm | UAV dynamics on, σ-norm on (**the default**) |
+| `FormationControlAvoidUAV02.m` | Quadrotors | σ-norm | UAV dynamics on, σ-norm on |
 | `Psi.m`, `NSigma.m` | | | `phi` and `sigma_norm` of `lib/flocking/functions.py` (the same formulas) |
+
+The UAV parameters, poles and sampling time come from `FormationControlAvoidUAV02.m`. The default scenario is new: 8 UAVs cross each other's paths to form a regular octagon of side 1 m. It uses Euclidean distance, $`a = 1`$, $`b = 20`$, a complete graph, $`v_0 = 0`$ and 30 s. To return to the MATLAB scenario, set 3 UAVs, side 1.5, the MATLAB initial positions, the σ-norm with $`\epsilon = 0.5`$, $`b = 10`$, $`d_a = 1.5`$ with the balancing off, and 100 s.
+
+
+## Desired shape: the offsets $`h_i`$
+
+### Only the differences $`h_i - h_j`$ matter
+
+The offsets enter the control law only through $`h_{ij} = h_i - h_j`$. Adding the same vector to every $`h_i`$ changes nothing, so the first UAV can always take $`h_1 = 0`$, and the others are given relative to it. At the equilibrium of the formation term, $`p_{ij} = h_{ij}`$ for every linked pair, so the UAVs reach
+
+```math
+p_i = \bar{p} + \left(h_i - \bar{h}\right), \qquad \bar{p} = \frac{1}{N}\sum_{k=1}^{N} p_k, \qquad \bar{h} = \frac{1}{N}\sum_{k=1}^{N} h_k .
+```
+
+The shape is fixed by the offsets. Its position is wherever the centroid $`\bar{p}`$ goes, which depends on the initial positions and on the leader velocity $`v_0`$. With $`v_0 = 0`$, the UAVs end at rest and hover in the shape.
+
+### Regular polygon with $`N`$ UAVs and side $`\ell`$
+
+To get a regular polygon in the $`xy`$ plane (a triangle for 3 UAVs, a square for 4, a pentagon for 5, an octagon for 8...), place the offsets on a circle of radius $`R`$ (the circumradius), at equal angles:
+
+```math
+R = \frac{\ell}{2 \sin(\pi / N)}, \qquad
+\theta_k = -\frac{\pi}{2} - \frac{\pi}{N} + \frac{2\pi (k - 1)}{N}, \qquad k = 1, \dots, N,
+```
+
+```math
+h_k = R \begin{bmatrix} \cos\theta_k - \cos\theta_1 \\ \sin\theta_k - \sin\theta_1 \\ 0 \end{bmatrix}.
+```
+
+Subtracting the first vertex makes $`h_1 = 0`$. The choice of $`\theta_1`$ makes the first side lie along $`+x`$, $`h_2 = (\ell, 0, 0)^\top`$, and the UAVs go round counter-clockwise. Two UAVs $`m`$ places apart around the polygon are at the chord distance
+
+```math
+\lVert h_k - h_{k+m} \rVert = 2R \sin\left(\frac{m \pi}{N}\right),
+```
+
+so neighbours ($`m = 1`$) are exactly $`\ell`$ apart. The third component is zero, so all UAVs share the same altitude. Special cases: $`N = 1`$ gives $`h_1 = 0`$, and $`N = 2`$ gives two UAVs $`\ell`$ apart along $`x`$. With $`N = 3`$ and $`\ell = 1.5`$, the offsets equal the `hp` matrix of the MATLAB code.
+
+**Octagon of the default scenario** ($`N = 8`$, $`\ell = 1`$ m, $`R = 1.3066`$ m):
+
+| UAV | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
+|---|---|---|---|---|---|---|---|---|
+| $`h_x`$ [m] | 0 | 1 | 1.7071 | 1.7071 | 1 | 0 | −0.7071 | −0.7071 |
+| $`h_y`$ [m] | 0 | 0 | 0.7071 | 1.7071 | 2.4142 | 2.4142 | 1.7071 | 0.7071 |
+
+The distances between UAVs are 1 (neighbours), 1.848, 2.414 and 2.613 m (opposite UAVs).
+
+In the code this is `polygon_offsets(n, side)` in `config.py`. The tab rewrites the `hx, hy, hz` columns with it whenever the number of UAVs or the polygon side changes.
+
+### Keeping the shape: choosing $`d_a`$
+
+The avoidance term has no cut-off, so it still acts once the UAVs are in place. On the desired shape, UAV $`i`$ feels
+
+```math
+F_i(d_a) = -\sum_{j \ne i} a_{ij}\, \psi\left(s(h_{ij}) - d_a\right) h_{ij},
+```
+
+which pushes close pairs apart ($`s < d_a`$) and pulls distant pairs together ($`s > d_a`$). If $`F_i \ne 0`$, the formation term has to cancel it with an error $`p_{ij} - h_{ij} \ne 0`$. With the MATLAB values ($`\sigma`$-norm, $`d_a = 1.5`$, triangle of side 1.5 m), the triangle settles with sides of about 1.88 m.
+
+When **Choose $`d_a`$ to keep the shape** is on (`balance_d_a = True`, the default), the code solves for the $`d_a`$ at which the avoidance does not change the size of the shape:
+
+```math
+\sum_{i=1}^{N} F_i(d_a) \cdot \left(h_i - \bar{h}\right) = 0, \qquad \min_{ij} s(h_{ij}) < d_a < \max_{ij} s(h_{ij}) .
+```
+
+This is solved with Brent's method (`FormationController.balanced_d_a`). The left side changes sign between the two bounds: all pairs attract below the smallest distance, and all repel above the largest. For a regular polygon with a complete graph, every $`F_i`$ points along $`h_i - \bar{h}`$ and has the same length, so the condition gives $`F_i = 0`$ for every UAV. The exact polygon is then an equilibrium, and the avoidance only acts while the UAVs are out of place. For the default octagon, with Euclidean distance, $`a = 1`$ and $`b = 20`$, this gives $`d_a = 2.061`$ m. For shapes that are not regular, only the size is balanced, and a small distortion can remain.
+
+### Initial conditions that test the avoidance
+
+The default scenario starts each UAV almost opposite its place in the octagon. The shape is turned by $`\alpha = 170^\circ`$ around the vertical, about the point $`c`$, and every other UAV starts 5 cm higher:
+
+```math
+p_i(0) = c + R_z(\alpha) \left(h_i - \bar{h}\right) + 0.05 \left((i - 1) \bmod 2\right) e_3, \qquad
+c = (0, 0, 1)^\top,\ \alpha = 170^\circ,\ v_i(0) = 0 .
+```
+
+The formation term sends every UAV in a nearly straight line through the centre region, all at the same time. Turning by 170° instead of 180° breaks the symmetry, so the UAVs can go round each other instead of meeting head-on. In the code this is `crossing_start(offsets)`, with `START_ROTATION` and `START_SCALE` (here 1) in `config.py`. Measured over 30 s with the default parameters:
+
+| Run | Closest approach | Final formation error |
+|---|---|---|
+| Particles, with avoidance | 0.338 m | 0.003 m |
+| Particles, avoidance off ($`a = b \approx 0`$) | **0.091 m** (below the 0.2 m collision line) | 0 |
+| Quadrotors, with avoidance | 0.313 m | 0.004 m, final speed below 0.001 m/s (hover) |
+| Quadrotors, avoidance off | **0.078 m** (below the 0.2 m collision line) | 0 |
+
+To reproduce the "off" rows, set `a` and `b` to a very small value, for example 0.000001. The tab's **Polygon and crossing start** button rewrites the table with this scenario for any number of UAVs.
+
+In the quadrotor runs, the common altitude rises from 1.02 m to about 1.6 m during the crossing, with or without avoidance. Nothing in the law fixes the altitude, only the relative positions, and the tilt and thrust limits break the balance between the UAVs while they are saturated. Particles keep their altitude. The peak tilt is 35.6°: the 30° limit clips the setpoint, not the actual angle.
+
+**How the scenario was chosen, and its limits.** The defaults come from a parameter search on quadrotors over 30 s, mostly with the start turned by 183° (180° + 0.05 rad), the hardest case in which every path goes through the centre:
+
+- **$`a`$ and $`b`$:** the offset $`c = \lvert a - b \rvert / \sqrt{4ab}`$ grows with $`b / a`$ and moves the strong repulsion to shorter distances. With $`a = 1`$, $`b = 40`$ the UAVs come as close as 0.010 m. With $`b = 5`$ or $`10`$, the repulsion is stronger at short range (0.385 m for particles with $`b = 10`$), but the flock settles in another arrangement with an error of about 0.32 m instead of the octagon. $`a = 1`$, $`b = 20`$ was the only combination tried that reached the octagon and stayed above 0.2 m.
+- **$`k_p = 2`$** reaches the octagon, but the UAVs come within 0.06 m. **$`k_p = 0.5`$** keeps them apart but leaves an error of about 0.7 m after 30 s.
+- **Start turned by 183°**: even with the defaults, the quadrotors come within 0.21 m. With the 30° tilt limit, they can't brake hard enough. Turning by 90–135° gives no collision even without avoidance, so it shows nothing.
+- **Quadrotor results depend on the orientation of the scene.** The tilt limit clips roll and pitch separately, so rotating everything around $`z`$ changes the closest approach (0.26 m against 0.135 m in two tests). Particle results don't depend on it.
+
+### Communication: a complete graph
+
+The avoidance term acts only between linked pairs ($`a_{ij} > 0`$). Two UAVs without a link don't see each other and can collide. The default is therefore a complete graph, $`a_{ij} = 1`$ for all $`i \ne j`$: every UAV knows the position and velocity of every other one. Its Laplacian has eigenvalues $`0`$ and $`N`$ (repeated $`N - 1`$ times), as the final formation figure shows. A sparser graph is possible from the graph table, but then the collision avoidance is no longer guaranteed for the pairs without a link.
 
 ## Control law
 
@@ -52,7 +150,8 @@ Only the off-diagonal entries are used, so the diagonal of `La` in `FormationCon
 
 **Points to keep in mind when reading the results:**
 
-- With the σ-norm, $`d_a`$ is compared with $`\lVert p_{ij} \rVert_\sigma`$, not with the distance in metres. With the defaults, $`\epsilon = 0.5`$ and $`d_a = 1.5`$, the avoidance changes sign at a Euclidean distance of about 2.03 m. The offsets ask for 1.5 m, so the formation term and the avoidance term disagree. The default UAV run settles with sides of about 1.88 m and a formation error of about 0.4 m.
+- With the σ-norm, $`d_a`$ is compared with $`\lVert p_{ij} \rVert_\sigma`$, not with the distance in metres. For example, with $`\epsilon = 0.5`$, $`d_a = 1.5`$ corresponds to a Euclidean distance of about 2.03 m. The balanced $`d_a`$ above takes this into account.
+- The avoidance force is $`\psi \, p_{ij}`$, so its size is $`\lvert\psi\rvert \lVert p_{ij} \rVert \le b \lVert p_{ij} \rVert`$. It vanishes as two UAVs get very close, so the law alone cannot guarantee that they never touch; the margin depends on $`a`$, $`b`$, the gains and the start.
 - The avoidance term has no cut-off. Every pair linked in the graph interacts at any distance, and pairs not linked ($`a_{ij} = 0`$) do not avoid each other.
 
 ### From particles to UAVs
@@ -77,10 +176,10 @@ p_i(k+1) = p_i(k) + h_w\, v_i(k), \qquad v_i(k+1) = v_i(k) + h_w\, u_i(k)
 
 | File | Contents |
 |---|---|
-| `config.py` | `FormationConfig` (`a`, `b`, `d_a`, `use_sigma_norm`, `epsilon`, `kp`, `kv`, `k0`, `v0`, `collision_distance`, derived `c`), plus the defaults of `FormationControlAvoidUAV02.m`: `FORMATION_QUADROTOR`, `FORMATION_SIMULATION` (100 s, `hw = 0.01`), `FORMATION_POLES`, `DEFAULT_POSITIONS`, `DEFAULT_OFFSETS` (triangle of side 1.5 m), `DEFAULT_UAVS` (3), `default_agent(i)` and `complete_graph(n)` |
-| `controller.py` | `FormationController(cfg, adjacency, offsets)`: `compute(P, V)` returns all $`u_i`$ at once (vectorised over pairs), and `laplacian()` returns $`L`$. It has the same interface as `FlockingController` (`reset`, `compute` returning `u` and an events vector, here always true) |
+| `config.py` | `FormationConfig` (`a`, `b`, `d_a`, `balance_d_a`, `use_sigma_norm`, `epsilon`, `kp`, `kv`, `k0`, `v0`, `collision_distance`, derived `c`). The UAV parameters of `FormationControlAvoidUAV02.m`: `FORMATION_QUADROTOR`, `FORMATION_POLES`, `FORMATION_SIMULATION` (30 s, `hw = 0.01`). The default scenario: `DEFAULT_UAVS` (8), `DEFAULT_SIDE` (1 m), `polygon_offsets(n, side)`, `crossing_start(offsets)`, `default_agent(i, n, side)`, and `complete_graph(n)` |
+| `controller.py` | `FormationController(cfg, adjacency, offsets)`: `compute(P, V)` returns all $`u_i`$ at once (vectorised over pairs), `laplacian()` returns $`L`$, `balanced_d_a()` solves for the shape-preserving $`d_a`$, and `d_a` is the value in use. It has the same interface as `FlockingController` (`reset`, `compute` returning `u` and an events vector, here always true) |
 | `simulator.py` | `ParticleSimulation`: the double-integrator loop. It returns a `FlockingResult` with zero angles and inputs, so the same plotter works |
-| `plotter.py` | `FormationPlotter`, a subclass of `FlockingPlotter` that reuses its trajectory, velocity, control and angle figures. It adds the final formation (graph links, the desired shape centred on the flock, Laplacian eigenvalues) and the distances (every pair, with the collision line and the closest approach, plus the formation error $`\lVert p_{ij} - h_{ij} \rVert`$) |
+| `plotter.py` | `FormationPlotter`, a subclass of `FlockingPlotter` that reuses its trajectory, velocity, control and angle figures. It adds the final formation (graph links, the desired shape centred on the flock, the $`d_a`$ used, Laplacian eigenvalues) and the distances (every pair, with the collision line and the closest approach, plus the formation error $`\lVert p_{ij} - h_{ij} \rVert`$) |
 
 ## How the classes interact
 

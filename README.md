@@ -72,9 +72,11 @@ The defaults reproduce `Simulation04.m`: 6 UAVs, `t_max = 40 s`, `hw = 0.001 s`.
 
 ### Formation control tab
 
-The defaults reproduce `FormationControlAvoidUAV02.m`: 3 UAVs, a triangle of side 1.5 m, a complete graph, the σ-norm, `t_max = 100 s` and `hw = 0.01 s`. 5 s of simulated time took under 3 s on the test machine.
+The default scenario has 8 UAVs that start almost opposite their places, so their paths cross near the centre, and form a regular octagon of side 1 m where they hover. The avoidance keeps them apart: the closest approach is 0.313 m, compared with 0.078 m when it is off. The scenario uses a complete graph, Euclidean distance, `t_max = 30 s` and `hw = 0.01 s`, with the UAV parameters and poles of `FormationControlAvoidUAV02.m`. It takes about 4 s. The equations for the offsets and the results are in [`lib/formation/README.md`](lib/formation/README.md#desired-shape-the-offsets-h_i).
 
 - **UAVs table:** for each UAV, the initial position and velocity, and its formation offset `hx, hy, hz` [m].
+- **Desired shape:** the offsets follow a regular polygon in the xy plane with the **Polygon side**, and `h_1 = 0`. They are rewritten when the number of UAVs or the side changes, while typed initial positions are kept. **Polygon and crossing start** rewrites every row with the default scenario for the current number of UAVs.
+- **Choose dₐ to keep the shape** (on) computes `dₐ` so the avoidance forces cancel on the desired shape. The `dₐ` field is then disabled, and the value used appears in the final formation figure.
 - **Communication graph:** an N × N table of weights `a_ij`, where 0 means no link. It resizes with the number of UAVs (up to 30).
 - **UAV dynamics** (on) runs quadrotors. Off, it runs ideal particles (`FormationControlAvoid.m`, `...02.m`), where the drone, pole and limit fields are not used. **Use σ-norm distance** switches between the `02` files and the Euclidean ones.
 - **Parameters:** avoidance `a`, `b`, `dₐ`, `ε`, and the collision distance used in the plot; gains `kp` (formation), `kv` (velocity consensus), `k0` (leader) and the leader velocity `v0`.
