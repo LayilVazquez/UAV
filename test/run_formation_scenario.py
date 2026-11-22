@@ -1,9 +1,9 @@
 """
 run_formation_scenario.py
-Runs the default formation scenario (FormationControlAvoidUAV02.m) without the GUI:
+Runs the default formation scenario (8 UAVs crossing to a regular octagon) without the GUI:
     python test/run_formation_scenario.py [t_max] [particles]
-e.g. python test/run_formation_scenario.py 5            (UAVs, 5 s)
-     python test/run_formation_scenario.py 100 particles
+e.g. python test/run_formation_scenario.py 5           (UAVs, 5 s)
+     python test/run_formation_scenario.py 30 particles
 """
 import os
 import sys

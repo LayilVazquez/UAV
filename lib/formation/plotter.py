@@ -38,7 +38,7 @@ class FormationPlotter(FlockingPlotter):
             ax.text(*p, f" {i + 1}")
         ax.scatter(*target.T, s=120, facecolors="none", edgecolors="k", label="desired shape")
         eigenvalues = np.sort(np.linalg.eigvals(self.ctrl.laplacian()).real)
-        ax.set_title("Final formation and links\nLaplacian eigenvalues: "
+        ax.set_title(f"Final formation and links (d_a = {self.ctrl.d_a:.3f})\nLaplacian eigenvalues: "
                      + ", ".join(f"{e:.2f}" for e in eigenvalues), fontsize=10)
         ax.set_xlabel("x [m]")
         ax.set_ylabel("y [m]")
