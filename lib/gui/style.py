@@ -24,6 +24,7 @@ def glass(base):
 
 
 def button_rules(name, base, text):
+    """Style sheet of one coloured button (selected by its object name) in all its states."""
     color = QColor(base)
     return f"""
 QPushButton#{name} {{ background: {glass(base)}; color: {text}; border: 1px solid {color.darker(170).name()}; }}
@@ -59,6 +60,19 @@ QPushButton:hover {{ background: {glass(QColor(BLUE).lighter(115).name())}; }}
 {button_rules("save", "#e0ad00", "#1c1500")}
 {button_rules("stop", "#c01a1a", "#ffffff")}
 
+QTabWidget::pane {{ border: 1px solid {BORDER}; border-radius: 8px; top: -1px; }}
+QTabBar::tab {{ background: {glass(PANEL)}; border: 1px solid {BORDER}; border-bottom: none;
+                border-top-left-radius: 7px; border-top-right-radius: 7px;
+                padding: 6px 18px; margin-right: 2px; font-size: {LABEL_FONT}; font-weight: bold; }}
+QTabBar::tab:selected {{ background: {glass(BLUE)}; }}
+QTabBar::tab:hover:!selected {{ background: {glass(QColor(PANEL).lighter(130).name())}; }}
+
+QTableWidget {{ background: {FIELD}; gridline-color: {BORDER}; border: 1px solid {BORDER}; border-radius: 5px;
+                selection-background-color: {BLUE}; }}
+QHeaderView::section {{ background: {glass(DARK_BLUE)}; border: 1px solid {BORDER}; padding: 3px; font-weight: bold; }}
+QTableCornerButton::section {{ background: {DARK_BLUE}; border: 1px solid {BORDER}; }}
+QSpinBox {{ border: 1px solid {BORDER}; border-radius: 5px; padding: 3px 6px; background: {FIELD}; }}
+
 QToolBar {{ background: transparent; border: none; }}
 QToolButton {{ background: transparent; border: 1px solid transparent; border-radius: 4px; }}
 QToolButton:hover, QToolButton:checked {{ background: {glass(BLUE)}; border-color: {BORDER}; }}
@@ -76,6 +90,7 @@ QStatusBar {{ background: {BACKGROUND}; color: {MUTED}; font-size: 8pt; }}
 
 
 def apply_style(app):
+    """Apply the theme to the whole application (call once, before creating the window)."""
     app.setStyle("Fusion")
     # Set the palette too: the Matplotlib toolbar picks its icon colour from it
     palette = QPalette()
