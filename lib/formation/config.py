@@ -19,8 +19,8 @@ FORMATION_POLES = np.array([-20.0, -20.0001, -20.0002, -20.0003, -20.0002, -20.0
 DEFAULT_UAVS = 8
 DEFAULT_SIDE = 1.0     # side of the regular polygon [m]
 START_CENTRE = np.array([0.0, 0.0, 1.0])
-START_ROTATION = np.pi + 0.05   # each UAV starts almost opposite its place, so the paths cross
-START_SCALE = 1.3
+START_ROTATION = np.radians(170)   # each UAV starts almost opposite its place, so the paths cross
+START_SCALE = 1.0
 
 
 def polygon_offsets(n, side=DEFAULT_SIDE):
