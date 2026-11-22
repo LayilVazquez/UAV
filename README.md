@@ -1,8 +1,15 @@
 # Quadrotor simulation and control (Python)
 
-Closed-loop simulation of a 12-state quadrotor following a virtual leader that moves at constant velocity. A PD position controller (outer loop) drives a PI attitude controller designed by pole placement (inner loop). The code is a port of a MATLAB model; the MATLAB simulations are kept locally in `MATLAB_code/`, which Git ignores.
+Two simulators in one window, one tab each:
 
-Status as of 2026-11-07: the code and figures described here were checked by running them. See [Verified behaviour](#verified-behaviour) and [Known limitations](#known-limitations).
+- **UAV simulator**: closed-loop simulation of a 12-state quadrotor following a virtual leader that moves at constant velocity. A PD position controller (outer loop) drives a PI attitude controller designed by pole placement (inner loop).
+- **UAV flocking**: N quadrotors flocking with the Olfati-Saber algorithm and event-triggered communication. An angle transformation turns each UAV into a particle in Euclidean space. See [`lib/flocking/README.md`](lib/flocking/README.md).
+
+Both are ports of MATLAB models. The MATLAB simulations are kept locally in `MATLAB_code/`, which Git ignores.
+
+The sections from [Data flow](#data-flow) to [Known limitations](#known-limitations) describe the single UAV simulator. The flocking simulator is described in [`lib/flocking/README.md`](lib/flocking/README.md).
+
+Status as of 2026-11-07: the single UAV code and figures described here were checked by running them. The flocking simulator (2026-11-22) was only checked with runs of a few hundredths of a second: its long-run behaviour has not been verified against the MATLAB results. See [Verified behaviour](#verified-behaviour) and [Known limitations](#known-limitations).
 
 ## Requirements
 
@@ -27,7 +34,7 @@ pip install -r requirements.txt
 python main.py
 ```
 
-That installs the dependencies and opens the simulator. To run the default scenario without the interface, use `python test/run_default_scenario.py`.
+That installs the dependencies and opens the simulator. To run the default scenarios without the interface, use `python test/run_default_scenario.py` (single UAV) or `python test/run_flocking_scenario.py` (flocking). See [`test/README.md`](test/README.md).
 
 `requirements.txt` sets minimum versions: NumPy 2.0, SciPy 1.16, Matplotlib 3.10 and PySide6 6.12. The project was tested with NumPy 2.5.4, SciPy 1.18.1, Matplotlib 3.11.2 and PySide6 6.12.0 on Python 3.15.2.
 
@@ -37,7 +44,11 @@ That installs the dependencies and opens the simulator. To run the default scena
 
 ## Graphical interface
 
-`python main.py` opens a dark window with a glossy, crystal look inspired by Windows XP, with the parameters on the left and 5 places for the figures on the right.
+`python main.py` opens a dark window with a glossy, crystal look inspired by Windows XP. **Tabs at the top** choose the simulator: **UAV simulator** or **UAV flocking**. Each tab has its own parameters on the left, its own buttons, and places for the figures on the right. A run continues when you switch tabs, and the status bar shows the tab on screen. The details are in [`lib/gui/README.md`](lib/gui/README.md).
+
+### UAV simulator tab
+
+5 places for figures.
 
 - **Parameters:** drone (`m`, `g`, `Jx`, `Jy`, `Jz`), `t_max` and `hw`, the 9 attitude poles grouped by axis, position gains, tilt and thrust limits, the initial conditions of the drone (position only; the other states start at zero), the reference (initial position and velocity), and wind. The fields are short and start with the default values.
 - **Numbers only:** the fields accept digits, one `.` as decimal separator and a `-` sign where a negative value is allowed. Scientific notation is not accepted. Poles must be negative; `m`, the inertias, `t_max` and `hw` must be positive.
@@ -47,26 +58,30 @@ That installs the dependencies and opens the simulator. To run the default scena
 - **Progress** appears as a percentage in the status bar at the bottom of the window.
 - **Stop** (red) is enabled only during a run. It ends the run and shows no plots. Closing the window also ends a run.
 
+### UAV flocking tab
+
+The defaults reproduce `Simulation04.m`: 6 UAVs, `t_max = 40 s`, `hw = 0.001 s`. This run takes about 1 minute, since 0.5 s of simulated time took 0.77 s on the test machine.
+
+- **UAVs table:** set the **Number of UAVs** (1 to 100), then type the initial position `x, y, z` [m] and velocity `vx, vy, vz` [m/s] of each UAV, one row per UAV. You can also paste a block copied from a spreadsheet with **Ctrl+V**. New rows take the MATLAB initial positions.
+- **Shared parameters:** every UAV has the same mass, inertias, attitude poles and tilt and thrust limits. These are the text fields, as in the other tab.
+- **Flocking parameters:** `r`, `d`, `ε`, `a`, `b`, `h` (Olfati-Saber); per-axis gains `k1` (velocity consensus) and `k2` (leader), and the leader velocity `v0`; **Use event trigger** with `β` and `κ`. Unchecked, the UAVs exchange data at every step (`Simulation03.m`). The communication graph is `a_ij` of `aij.m`.
+- **Checks:** besides the field ranges, `d < r`, `a <= b` and `h < 1`. Invalid table cells are listed by UAV and column.
+- **6 figures:** the 3D trajectories of the particles (start and end marked), the final formation with the graph links and the closest distance, velocities against `v0`, the control law `u`, Euler angles, and the communication events of each UAV.
+- **Run simulation**, **Stop** and **Save plots** work as in the other tab. The PNG names start with `flocking_`, so they do not overwrite the single UAV plots.
+
 ## Repository layout
 
 | Path | Contents |
 |---|---|
 | `main.py` | Starts the window |
 | `requirements.txt` | Minimum dependency versions |
-| `lib/gui/window.py` | `MainWindow`: parameters, buttons, background run, saving |
-| `lib/gui/fields.py` | Labels, default values and allowed ranges of the text fields |
-| `lib/gui/plot_slot.py` | `PlotSlot`: one interactive figure with its toolbar |
-| `lib/gui/style.py` | Dark crystal theme and button colours |
-| `test/run_default_scenario.py` | Runs the default scenario without the interface, prints final velocities, plots. It is a script, not an automated test |
-| `lib/simulation/config.py` | `QuadrotorParams`, `SimulationConfig`, `ControllerConfig` (all parameters and gains) |
-| `lib/simulation/quadrotor.py` | `Quadrotor`: dynamics and one-period integration |
-| `lib/simulation/controllers.py` | `AttitudeController`, `PositionController`, `wrap_angle` |
-| `lib/simulation/reference.py` | `ConstantVelocityReference`: the virtual leader |
-| `lib/simulation/simulator.py` | `Simulation` loop and `SimulationResult` |
-| `lib/simulation/plotter.py` | `Plotter`: saves the 5 figures |
+| [`lib/gui/`](lib/gui/README.md) | The window: `MainWindow` (tabs), `SimulatorTab` (shared fields, buttons, background run, saving), `UavTab`, `FlockingTab`, `AgentTable`, field lists, `PlotSlot`, theme |
+| [`lib/simulation/`](lib/simulation/README.md) | Single UAV simulator and the UAV building blocks: parameters, `Quadrotor`, `AttitudeController`, `PositionController` (with the angle transformation `thrust_and_angles`), reference, `Simulation`, `Plotter` |
+| [`lib/flocking/`](lib/flocking/README.md) | UAV flocking simulator: Olfati-Saber functions, `FlockingConfig`, `FlockingController`, `FlockingSimulation`, `FlockingPlotter` |
+| [`test/`](test/README.md) | `run_default_scenario.py` and `run_flocking_scenario.py`: run each default scenario without the interface. They are scripts, not automated tests |
 | `results/` | Local only, ignored by Git: figures from the **current** code, regenerated by `test/run_default_scenario.py` or saved from the interface |
 | `fig/` | Local only, ignored by Git: older figures with faster attitude poles (see [Figures](#figures)) |
-| `MATLAB_code/` | Local only, ignored by Git: former MATLAB simulations |
+| `MATLAB_code/` | Local only, ignored by Git: former MATLAB simulations. `pdf/` holds the Olfati-Saber flocking paper; `scr/UAV_Flocking/` holds the flocking functions and simulations ported to `lib/flocking` |
 
 ## Data flow
 
@@ -206,16 +221,17 @@ Figures are not stored in Git. On 2026-11-07, the local `results/` matched the c
 | To change | Edit |
 |---|---|
 | Scenario, wind, duration, sampling time | The fields in the window, or `test/run_default_scenario.py` |
-| Fields shown in the window | `field_groups` in `lib/gui/fields.py` |
+| Fields shown in the window | `field_groups` (UAV tab) or `flocking_field_groups` (flocking tab) in `lib/gui/fields.py` |
 | Colours, look and label size of the window | `lib/gui/style.py` (`LABEL_FONT` is the label size) |
-| Width of the text fields | `FIELD_WIDTH` in `lib/gui/window.py` |
+| Width of the text fields | `FIELD_WIDTH` in `lib/gui/simulator_tab.py` |
 | Physical parameters | `QuadrotorParams` in `lib/simulation/config.py` |
 | Position gains, tilt limit, thrust limit | `ControllerConfig` in `lib/simulation/config.py` |
 | Attitude poles | `attitude_poles` in `lib/simulation/config.py`, keeping the index order above |
-| Reference trajectory | Add a class with `generate(time)` returning `pr, vr, ar`, each shaped `3 x (allK + 1)`, and use it in `MainWindow.simulate` in `lib/gui/window.py` |
+| Reference trajectory | Add a class with `generate(time)` returning `pr, vr, ar`, each shaped `3 x (allK + 1)`, and use it in `UavTab.simulate` in `lib/gui/uav_tab.py` |
 | Yaw setpoint | Pass `psi_des` to `pos_ctrl.compute` in `lib/simulation/simulator.py`; it currently always uses the default of 0 |
 | Disturbance force or drag | `Quadrotor.dynamics` in `lib/simulation/quadrotor.py` (the current `w` only affects position) |
-| New plot | Add a method to `Plotter` and call it from `plot_all` |
+| New plot | Add a method to `Plotter` and call it from `plot_all`, then add its title and file name to `FIGURES` in `lib/gui/uav_tab.py` |
+| Flocking parameters, default UAVs | `lib/flocking/config.py`; see [`lib/flocking/README.md`](lib/flocking/README.md) |
 
 **Check stability before changing `hw` or the poles.** For one axis, the sum of its pole magnitudes times `hw` should stay well below 2. This rule of thumb fits the tests: roll gives 120.5 × 0.016 = 1.93 (stable) and 120.5 × 0.018 = 2.17 (diverges).
 

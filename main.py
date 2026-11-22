@@ -1,6 +1,7 @@
 """
 main.py
-Starts the quadrotor simulator window. The code lives in lib/gui/.
+Starts the simulator window, with one tab per simulator (single UAV, UAV flocking).
+The code lives in lib/; see the README of each subfolder.
 """
 import sys
 
