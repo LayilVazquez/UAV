@@ -48,6 +48,12 @@ class AgentTable(QTableWidget):
                 self.setItem(i, j, QTableWidgetItem(format_number(value)))
         self.setVerticalHeaderLabels([f"UAV {i + 1}" for i in range(n)])
 
+    def set_values(self, data, first_column=0):
+        """Overwrite the cells of every row from first_column on with data (rows x k)."""
+        for i, row in enumerate(data):
+            for j, value in enumerate(row):
+                self.setItem(i, first_column + j, QTableWidgetItem(format_number(value)))
+
     def values(self):
         """Return (rows x columns array, [names of invalid cells])."""
         data = np.zeros((self.rowCount(), self.columnCount()))

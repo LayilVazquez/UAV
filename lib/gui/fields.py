@@ -4,7 +4,8 @@ The text fields of each tab: labels, default values and allowed ranges.
 A field is (key, label, default, (min, max)); the key is how the tab reads its value.
 """
 from lib.flocking.config import FLOCKING_POLES, FLOCKING_QUADROTOR, FLOCKING_SIMULATION, FlockingConfig
-from lib.formation.config import FORMATION_POLES, FORMATION_QUADROTOR, FORMATION_SIMULATION, FormationConfig
+from lib.formation.config import (DEFAULT_SIDE, FORMATION_POLES, FORMATION_QUADROTOR, FORMATION_SIMULATION,
+                                  FormationConfig)
 from lib.simulation.config import QuadrotorParams, SimulationConfig, ControllerConfig
 
 POSITIVE = (1e-9, 1e6)
@@ -96,6 +97,7 @@ def formation_field_groups():
         ("Simulation", simulation_fields(FORMATION_SIMULATION)),
         ("Attitude eigenvalues (poles)", pole_fields(FORMATION_POLES)),
         ("Thrust and tilt limits", limit_fields(ControllerConfig())),
+        ("Desired shape (regular polygon in the xy plane)", [("side", "Polygon side [m]", DEFAULT_SIDE, POSITIVE)]),
         ("Collision avoidance", [("a", "Attraction a", f.a, POSITIVE),
                                  ("b", "Repulsion b", f.b, POSITIVE),
                                  ("d_a", "Avoidance distance dₐ", f.d_a, POSITIVE),

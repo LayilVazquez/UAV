@@ -2,13 +2,15 @@
 formation_tab.py
 FormationTab: formation control with collision avoidance (lib/formation) for N quadrotors or particles.
 Shared parameters are text fields; each UAV's initial conditions and formation offset, and the
-communication graph, are tables.
+communication graph, are tables. The offsets follow a regular polygon of the chosen side for the
+number of UAVs; they are rewritten when the number of UAVs or the side changes.
 """
 import numpy as np
-from PySide6.QtWidgets import QCheckBox, QFormLayout, QGroupBox, QSpinBox
+from PySide6.QtWidgets import QCheckBox, QFormLayout, QGroupBox, QPushButton, QSpinBox
 
 from lib.flocking.simulator import FlockingSimulation
-from lib.formation.config import DEFAULT_UAVS, FormationConfig, default_agent
+from lib.formation.config import (DEFAULT_SIDE, DEFAULT_UAVS, FormationConfig, crossing_start, default_agent,
+                                  polygon_offsets)
 from lib.formation.controller import FormationController
 from lib.formation.plotter import FormationPlotter
 from lib.formation.simulator import ParticleSimulation
@@ -38,12 +40,17 @@ class FormationTab(SimulatorTab):
         self.uav_box.setChecked(True)
         self.sigma_box = QCheckBox()
         self.sigma_box.setChecked(FormationConfig().use_sigma_norm)
+        self.balance_box = QCheckBox()
+        self.balance_box.toggled.connect(lambda on: self.fields["d_a"][1].setEnabled(not on))
+        self.balance_box.setChecked(FormationConfig().balance_d_a)
         form = self.forms["Collision avoidance"]
         form.insertRow(0, "UAV dynamics (off: particles)", self.uav_box)
         form.insertRow(1, "Use σ-norm distance", self.sigma_box)
+        form.insertRow(2, "Choose dₐ to keep the shape", self.balance_box)
 
         # Number of UAVs, their initial conditions and offsets, and the graph
-        self.table = AgentTable(default_agent, COLUMNS + ["hx", "hy", "hz"])
+        self.table = AgentTable(lambda i: default_agent(i, self.count.value(), self.side()),
+                                COLUMNS + ["hx", "hy", "hz"])
         self.graph = GraphTable()
         self.count = QSpinBox()
         self.count.setRange(1, MAX_UAVS)
@@ -51,14 +58,33 @@ class FormationTab(SimulatorTab):
         for table in (self.table, self.graph):
             table.set_count(DEFAULT_UAVS)
             self.count.valueChanged.connect(table.set_count)
+        self.count.valueChanged.connect(lambda n: self.apply_shape())   # after the tables have n rows
+        self.fields["side"][1].editingFinished.connect(self.apply_shape)
+        reset = QPushButton("Polygon and crossing start")
+        reset.setToolTip("Rewrite every row: the polygon offsets, and initial positions that cross near the centre")
+        reset.clicked.connect(lambda: self.apply_shape(positions=True))
         box = QGroupBox("UAVs: initial position [m], velocity [m/s] and formation offset h [m]")
         rows = QFormLayout(box)
         rows.addRow("Number of UAVs", self.count)
+        rows.addRow(reset)
         rows.addRow(self.table)
         graph_box = QGroupBox("Communication graph: a_ij (row i uses the data of column j)")
         QFormLayout(graph_box).addRow(self.graph)
         self.form_layout.insertWidget(0, box)
         self.form_layout.insertWidget(1, graph_box)
+
+    def side(self):
+        """Polygon side typed by the user, or the default while the field is incomplete."""
+        field = self.fields["side"][1]
+        return float(field.text()) if field.hasAcceptableInput() else DEFAULT_SIDE
+
+    def apply_shape(self, positions=False):
+        """Write the regular polygon offsets for the current number of UAVs and side; with positions,
+        also the crossing initial positions and zero velocities (the default scenario)."""
+        offsets = polygon_offsets(self.count.value(), self.side())
+        self.table.set_values(offsets, first_column=6)
+        if positions:
+            self.table.set_values(np.hstack([crossing_start(offsets), np.zeros_like(offsets)]))
 
     def field_groups(self):
         """Fields of lib/gui/fields.py."""
@@ -71,6 +97,7 @@ class FormationTab(SimulatorTab):
         values["graph"], bad_links = self.graph.values()
         values["uav"] = self.uav_box.isChecked()
         values["sigma"] = self.sigma_box.isChecked()
+        values["balance"] = self.balance_box.isChecked()
         return values, invalid + bad_agents + bad_links
 
     def check(self, v):
@@ -82,7 +109,8 @@ class FormationTab(SimulatorTab):
 
     def simulate(self, v):
         """Build the controller and run it on UAVs (FlockingSimulation) or particles (ParticleSimulation)."""
-        cfg = FormationConfig(a=v["a"], b=v["b"], d_a=v["d_a"], use_sigma_norm=v["sigma"], epsilon=v["epsilon"],
+        cfg = FormationConfig(a=v["a"], b=v["b"], d_a=v["d_a"], balance_d_a=v["balance"],
+                              use_sigma_norm=v["sigma"], epsilon=v["epsilon"],
                               kp=v["kp"], kv=v["kv"], k0=v["k0"], v0=np.array([v[f"v0{i}"] for i in range(3)]),
                               collision_distance=v["collision"])
         agents = v["agents"]
