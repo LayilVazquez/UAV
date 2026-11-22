@@ -102,6 +102,7 @@ class PositionController:
         self.kd = cfg.kd_pos
         self.max_tilt = np.deg2rad(cfg.max_tilt_deg)
         self.T_max = cfg.max_thrust_factor * params.m * params.g
+        self.keep_altitude = cfg.keep_altitude
 
     def compute(self, pos, vel, p_ref, v_ref, a_ref, psi_des=0.0):
         """Return (T, [phi_d, theta_d, psi_d]) that drive the drone towards p_ref, v_ref."""
@@ -129,5 +130,10 @@ class PositionController:
 
         phi_d = np.clip(phi_d, -self.max_tilt, self.max_tilt)
         theta_d = np.clip(theta_d, -self.max_tilt, self.max_tilt)
+
+        if self.keep_altitude:
+            # Altitude priority: T cos(phi) cos(theta) = f_z. Equals |f| when nothing is clipped;
+            # when the tilt is clipped, the horizontal acceleration is reduced instead of the vertical one.
+            T = min(f[2] / (np.cos(phi_d) * np.cos(theta_d)), self.T_max)
 
         return T, np.array([phi_d, theta_d, psi_des])

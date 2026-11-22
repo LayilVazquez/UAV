@@ -44,3 +44,4 @@ class ControllerConfig:
     kd_pos: np.ndarray = field(default_factory=lambda: np.array([4.0, 4.0, 5.0]))
     max_tilt_deg: float = 30.0   # saturation for desired roll / pitch
     max_thrust_factor: float = 2.0  # T_max = factor * m * g
+    keep_altitude: bool = False     # when the tilt is clipped, keep the vertical force (see thrust_and_angles)
