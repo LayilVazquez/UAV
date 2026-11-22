@@ -29,7 +29,7 @@ def main():
     params = FORMATION_QUADROTOR
     sim_cfg = replace(FORMATION_SIMULATION, t_max=float(sys.argv[1])) if len(sys.argv) > 1 else FORMATION_SIMULATION
     particles = "particles" in sys.argv
-    ctrl_cfg = ControllerConfig(attitude_poles=FORMATION_POLES)
+    ctrl_cfg = ControllerConfig(attitude_poles=FORMATION_POLES, keep_altitude=True)   # same as the GUI tab
 
     agents = np.array([default_agent(i) for i in range(DEFAULT_UAVS)])
     controller = FormationController(FormationConfig(), complete_graph(DEFAULT_UAVS), agents[:, 6:9])

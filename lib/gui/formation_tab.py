@@ -121,7 +121,8 @@ class FormationTab(SimulatorTab):
         if v["uav"]:
             params = QuadrotorParams(g=v["g"], Jx=v["Jx"], Jy=v["Jy"], Jz=v["Jz"], m=v["m"])
             ctrl_cfg = ControllerConfig(attitude_poles=np.array([v[f"pole{i}"] for i in range(9)]),
-                                        max_tilt_deg=v["max_tilt"], max_thrust_factor=v["thrust"])
+                                        max_tilt_deg=v["max_tilt"], max_thrust_factor=v["thrust"],
+                                        keep_altitude=True)   # the UAVs stay level while the tilt is clipped
             sim = FlockingSimulation(Quadrotor(params), controller, PositionController(params, ctrl_cfg),
                                      [AttitudeController(params, ctrl_cfg.attitude_poles) for _ in x0], sim_cfg, x0)
         else:

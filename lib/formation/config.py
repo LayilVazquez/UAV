@@ -37,11 +37,10 @@ def polygon_offsets(n, side=DEFAULT_SIDE):
 
 def crossing_start(offsets):
     """Initial positions: the shape turned by START_ROTATION and enlarged by START_SCALE around
-    START_CENTRE, with every other UAV 5 cm higher. Without avoidance, the UAVs collide near the centre."""
+    START_CENTRE, all at the same altitude. Without avoidance, the UAVs collide near the centre."""
     c, s = np.cos(START_ROTATION), np.sin(START_ROTATION)
     turn = np.array([[c, -s, 0.0], [s, c, 0.0], [0.0, 0.0, 1.0]])
     P = START_SCALE * (offsets - offsets.mean(axis=0)) @ turn.T + START_CENTRE
-    P[:, 2] += 0.05 * (np.arange(len(offsets)) % 2)
     return P
 
 
