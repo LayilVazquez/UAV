@@ -1,9 +1,11 @@
 """
 agent_table.py
-AgentTable: one row per UAV with its initial position and velocity.
+AgentTable: one row per UAV (initial conditions, formation offsets...).
+GraphTable: the N x N adjacency matrix of the communication graph.
 Cells accept numbers only; a block copied from Excel or a text file can be pasted with Ctrl+V.
 """
 import numpy as np
+from PySide6.QtCore import Qt
 from PySide6.QtGui import QKeySequence
 from PySide6.QtWidgets import (QApplication, QHeaderView, QLineEdit, QStyledItemDelegate, QTableWidget,
                                QTableWidgetItem)
@@ -11,7 +13,7 @@ from PySide6.QtWidgets import (QApplication, QHeaderView, QLineEdit, QStyledItem
 from lib.gui.fields import ANY
 from lib.gui.simulator_tab import format_number, number_validator
 
-COLUMNS = ["x", "y", "z", "vx", "vy", "vz"]
+COLUMNS = ["x", "y", "z", "vx", "vy", "vz"]   # default columns: initial position and velocity
 
 
 class NumberDelegate(QStyledItemDelegate):
@@ -24,15 +26,15 @@ class NumberDelegate(QStyledItemDelegate):
 
 
 class AgentTable(QTableWidget):
-    """Initial conditions of the flock: row i is UAV i + 1, columns x, y, z [m] and vx, vy, vz [m/s]."""
+    """One row per UAV: row i is UAV i + 1, one column per value (by default x, y, z [m], vx, vy, vz [m/s])."""
 
-    def __init__(self, default_row):
-        """default_row(i) gives the 6 values proposed for a new row i (0-based)."""
-        super().__init__(0, len(COLUMNS))
+    def __init__(self, default_row, columns=COLUMNS):
+        """default_row(i) gives the values proposed for a new row i (0-based), one per column."""
+        super().__init__(0, len(columns))
         self.default_row = default_row
-        self.setHorizontalHeaderLabels(COLUMNS)
+        self.setHorizontalHeaderLabels(columns)
         self.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        self.horizontalHeader().setMinimumSectionSize(40)   # 6 columns must fit the parameter panel
+        self.horizontalHeader().setMinimumSectionSize(40)   # the columns must fit the parameter panel
         self.setItemDelegate(NumberDelegate(self))
         self.setMinimumHeight(240)
         self.setAccessibleName("Initial conditions of the UAVs")
@@ -47,18 +49,18 @@ class AgentTable(QTableWidget):
         self.setVerticalHeaderLabels([f"UAV {i + 1}" for i in range(n)])
 
     def values(self):
-        """Return (N x 6 array, [names of invalid cells])."""
-        data = np.zeros((self.rowCount(), len(COLUMNS)))
+        """Return (rows x columns array, [names of invalid cells])."""
+        data = np.zeros((self.rowCount(), self.columnCount()))
         invalid = []
         for i in range(self.rowCount()):
-            for j, name in enumerate(COLUMNS):
+            for j in range(self.columnCount()):
                 item = self.item(i, j)
                 try:
                     data[i, j] = float(item.text() if item else "")
                     if not np.isfinite(data[i, j]):
                         raise ValueError
                 except ValueError:
-                    invalid.append(f"UAV {i + 1}: {name}")
+                    invalid.append(f"{self.verticalHeaderItem(i).text()}: {self.horizontalHeaderItem(j).text()}")
         return data, invalid
 
     def keyPressEvent(self, event):
@@ -76,3 +78,28 @@ class AgentTable(QTableWidget):
             for j, text in enumerate(line.split()):
                 if top + i < self.rowCount() and left + j < self.columnCount():
                     self.setItem(top + i, left + j, QTableWidgetItem(text))
+
+
+class GraphTable(AgentTable):
+    """Adjacency matrix: a_ij > 0 means UAV i uses the data of UAV j, with weight a_ij.
+    The diagonal is not used and cannot be edited."""
+
+    def __init__(self):
+        super().__init__(None, columns=[])
+        self.setAccessibleName("Communication graph of the UAVs")
+
+    def set_count(self, n):
+        """Show an n x n matrix. Cells already there keep their value; new links default to 1."""
+        old = self.rowCount()
+        self.setRowCount(n)
+        self.setColumnCount(n)
+        for i in range(n):
+            for j in range(n):
+                if i >= old or j >= old:
+                    item = QTableWidgetItem("0" if i == j else "1")
+                    if i == j:
+                        item.setFlags(item.flags() & ~Qt.ItemIsEditable)
+                    self.setItem(i, j, item)
+        labels = [f"UAV {i + 1}" for i in range(n)]
+        self.setVerticalHeaderLabels(labels)
+        self.setHorizontalHeaderLabels(labels)

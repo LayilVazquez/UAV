@@ -15,7 +15,7 @@ from lib.flocking.simulator import FlockingResult
 class FlockingPlotter:
     """Draws the 6 flocking figures and saves them as PNG in save_dir.
     Subclasses (lib/formation) reuse the figures with another PREFIX in the file names."""
-    PREFIX = ""
+    PREFIX = "flocking_"
 
     def __init__(self, result: FlockingResult, cfg: FlockingConfig, save_dir="results"):
         """cfg gives the leader velocity and the graph parameters used to draw the links."""

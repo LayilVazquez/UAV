@@ -5,6 +5,7 @@ Main window: one tab per simulator, chosen at the top of the window, and a share
 from PySide6.QtWidgets import QMainWindow, QTabWidget
 
 from lib.gui.flocking_tab import FlockingTab
+from lib.gui.formation_tab import FormationTab
 from lib.gui.uav_tab import UavTab
 
 
@@ -18,6 +19,7 @@ class MainWindow(QMainWindow):
         self.tabs = QTabWidget()
         self.tabs.addTab(UavTab(), "UAV simulator")
         self.tabs.addTab(FlockingTab(), "UAV flocking")
+        self.tabs.addTab(FormationTab(), "Formation control")
         # The status bar is shared: show the status of the tab that comes on screen
         self.tabs.currentChanged.connect(
             lambda index: self.statusBar().showMessage(self.tabs.widget(index).last_status))

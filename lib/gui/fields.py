@@ -4,6 +4,7 @@ The text fields of each tab: labels, default values and allowed ranges.
 A field is (key, label, default, (min, max)); the key is how the tab reads its value.
 """
 from lib.flocking.config import FLOCKING_POLES, FLOCKING_QUADROTOR, FLOCKING_SIMULATION, FlockingConfig
+from lib.formation.config import FORMATION_POLES, FORMATION_QUADROTOR, FORMATION_SIMULATION, FormationConfig
 from lib.simulation.config import QuadrotorParams, SimulationConfig, ControllerConfig
 
 POSITIVE = (1e-9, 1e6)
@@ -83,4 +84,25 @@ def flocking_field_groups():
                                  + xyz("v0", "Leader velocity v0 [m/s]", f.v0, ANY)),
         ("Event-triggered communication", [("beta", "β", f.beta, NON_NEGATIVE),
                                            ("kappa", "κ", f.kappa, ANY)]),
+    ]
+
+
+def formation_field_groups():
+    """Formation control tab: parameters shared by every UAV, defaults from lib/formation/config.py.
+    The initial conditions, the offsets and the graph are in the tables of the tab."""
+    f = FormationConfig()
+    return [
+        ("Drone (same for every UAV)", drone_fields(FORMATION_QUADROTOR)),
+        ("Simulation", simulation_fields(FORMATION_SIMULATION)),
+        ("Attitude eigenvalues (poles)", pole_fields(FORMATION_POLES)),
+        ("Thrust and tilt limits", limit_fields(ControllerConfig())),
+        ("Collision avoidance", [("a", "Attraction a", f.a, POSITIVE),
+                                 ("b", "Repulsion b", f.b, POSITIVE),
+                                 ("d_a", "Avoidance distance dₐ", f.d_a, POSITIVE),
+                                 ("epsilon", "σ-norm ε", f.epsilon, POSITIVE),
+                                 ("collision", "Collision distance [m]", f.collision_distance, NON_NEGATIVE)]),
+        ("Formation, consensus and leader", [("kp", "Formation gain kp", f.kp, NON_NEGATIVE),
+                                             ("kv", "Velocity consensus gain kv", f.kv, NON_NEGATIVE),
+                                             ("k0", "Leader gain k0", f.k0, NON_NEGATIVE)]
+                                            + xyz("v0", "Leader velocity v0 [m/s]", f.v0, ANY)),
     ]
