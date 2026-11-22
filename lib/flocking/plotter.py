@@ -13,7 +13,9 @@ from lib.flocking.simulator import FlockingResult
 
 
 class FlockingPlotter:
-    """Draws the 6 flocking figures and saves them as PNG in save_dir."""
+    """Draws the 6 flocking figures and saves them as PNG in save_dir.
+    Subclasses (lib/formation) reuse the figures with another PREFIX in the file names."""
+    PREFIX = ""
 
     def __init__(self, result: FlockingResult, cfg: FlockingConfig, save_dir="results"):
         """cfg gives the leader velocity and the graph parameters used to draw the links."""
@@ -25,6 +27,7 @@ class FlockingPlotter:
 
     def _save(self, fig, name):
         """Keep the figure in self.figures (the GUI shows it) and write it to save_dir."""
+        name = self.PREFIX + name
         fig.tight_layout()
         self.figures[name] = fig
         fig.savefig(os.path.join(self.save_dir, name), dpi=130)
@@ -47,7 +50,7 @@ class FlockingPlotter:
         ax.set_zlabel("z [m]")
         ax.set_title("Trajectory of all UAVs (start blue, end red)")
         self._legend(ax)
-        self._save(fig, "flocking_trajectories_3d.png")
+        self._save(fig, "trajectories_3d.png")
 
     def plot_final_formation(self):
         """The UAVs as particles at the final time, joined where the graph links them (a_ij > 0)."""
@@ -71,7 +74,7 @@ class FlockingPlotter:
         ax.set_ylabel("y [m]")
         ax.set_zlabel("z [m]")
         self._legend(ax)
-        self._save(fig, "flocking_final_formation.png")
+        self._save(fig, "final_formation.png")
 
     def _per_axis(self, data, t, labels, title, name, reference=None):
         """3 stacked plots, one per axis, with one line per UAV."""
@@ -91,18 +94,18 @@ class FlockingPlotter:
     def plot_velocities(self):
         """v1, v2, v3 of every UAV against the leader velocity v0."""
         self._per_axis(self.r.X[:, 3:6], self.r.time, ["$v_1$ [m/s]", "$v_2$ [m/s]", "$v_3$ [m/s]"],
-                       "UAV velocities", "flocking_velocities.png", reference=self.cfg.v0)
+                       "UAV velocities", "velocities.png", reference=self.cfg.v0)
 
     def plot_control(self):
         """Flocking control law u_i (desired acceleration of each particle)."""
         self._per_axis(self.r.accel, self.r.time[:-1], ["$u_1$ [m/s²]", "$u_2$ [m/s²]", "$u_3$ [m/s²]"],
-                       "Control law", "flocking_control.png")
+                       "Control law", "control.png")
 
     def plot_angles(self):
         """Roll, pitch and yaw of every UAV, in degrees."""
         self._per_axis(np.rad2deg(self.r.X[:, 6:9]), self.r.time,
                        [r"$\phi$ [deg]", r"$\theta$ [deg]", r"$\psi$ [deg]"],
-                       "Euler angles", "flocking_angles.png")
+                       "Euler angles", "angles.png")
 
     def plot_events(self):
         """When each UAV sent new data to its neighbours (one row of ticks per UAV)."""
@@ -116,7 +119,7 @@ class FlockingPlotter:
         ax.grid(True, axis="x")
         ax.set_title("Event function" if self.cfg.event_triggered
                      else "Communication events (event trigger off: every step)")
-        self._save(fig, "flocking_events.png")
+        self._save(fig, "events.png")
 
     def plot_all(self, show=True):
         """Draw and save all figures; show=True opens them with plt.show()."""
