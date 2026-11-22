@@ -14,6 +14,7 @@ from lib.simulation.controllers import PositionController, AttitudeController
 
 @dataclass
 class SimulationResult:
+    """Everything a run produces, ready for the Plotter."""
     time: np.ndarray        # (allK+1,)
     X: np.ndarray           # 12 x (allK+1) drone states
     pr: np.ndarray          # 3 x (allK+1) reference position
@@ -23,11 +24,13 @@ class SimulationResult:
 
 
 class Simulation:
+    """Closed loop of one drone: reference -> PositionController -> AttitudeController -> Quadrotor."""
     DIVERGENCE_LIMIT = 1e3   # on |angles| [rad] and |angular rates| [rad/s]
 
     def __init__(self, drone: Quadrotor, reference: ConstantVelocityReference,
                  pos_ctrl: PositionController, att_ctrl: AttitudeController,
                  sim_cfg: SimulationConfig, x0, wind=None):
+        """x0: 12 initial states of the drone; wind: constant wind velocity [m/s]."""
         self.drone = drone
         self.reference = reference
         self.pos_ctrl = pos_ctrl

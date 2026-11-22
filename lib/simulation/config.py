@@ -24,10 +24,12 @@ class SimulationConfig:
 
     @property
     def allK(self) -> int:
+        """Number of sampling periods."""
         return int(round(self.t_max / self.hw))
 
     @property
     def time(self) -> np.ndarray:
+        """Time samples 0, hw, ..., allK * hw (allK + 1 values)."""
         return np.linspace(0.0, self.allK * self.hw, self.allK + 1)
 
 

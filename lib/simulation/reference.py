@@ -8,6 +8,7 @@ from scipy.integrate import solve_ivp
 
 
 class ConstantVelocityReference:
+    """Virtual leader: starts at p0 and moves with the constant velocity v_ref."""
 
     def __init__(self, v_ref, p0=(0.0, 0.0, 0.0)):
         self.v_ref = np.asarray(v_ref, dtype=float)
@@ -18,11 +19,12 @@ class ConstantVelocityReference:
 
     @staticmethod
     def _leader(t, x):
+        """Leader ODE: x = [p, v], dp = v, dv = 0."""
         v = x[3:6]
         return np.concatenate((v, np.zeros(3)))
 
     def generate(self, time):
-        """Integrate the leader over the whole time vector."""
+        """Integrate the leader over the whole time vector; returns pr, vr, ar (3 x len(time))."""
         x0 = np.concatenate((self.p0, self.v_ref))
         sol = solve_ivp(self._leader, (time[0], time[-1]), x0, t_eval=time,
                         method="RK45", rtol=1e-9, atol=1e-12)

@@ -11,13 +11,16 @@ from lib.simulation.config import QuadrotorParams
 
 
 class Quadrotor:
+    """Rigid-body model of one quadrotor. It holds no state, so one instance can step many drones."""
     N_STATES = 12
 
     def __init__(self, params: QuadrotorParams):
+        """params: mass, gravity and inertias used by the dynamics."""
         self.p = params
 
     def dynamics(self, t, x, u, w):
-        """Right-hand side of the ODE (equivalent to the MATLAB Drone function)."""
+        """Right-hand side of the ODE (equivalent to the MATLAB Drone function).
+        x: 12 states, u: [T, tau1, tau2, tau3], w: wind velocity added to dp."""
         g, m = self.p.g, self.p.m
         Jx, Jy, Jz = self.p.Jx, self.p.Jy, self.p.Jz
         T, tau1, tau2, tau3 = u

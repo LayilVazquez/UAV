@@ -16,9 +16,14 @@ def wrap_angle(a):
 
 
 class AttitudeController:
-    """u = -Kp * x_e - Ki * integral(e),  with K2 = place(Aa, Ba, Poles)."""
+    """u = -Kp * x_e - Ki * integral(e), with the gains placed axis by axis.
+
+    Each instance keeps its own integral state, so every drone needs its own controller.
+    """
 
     def __init__(self, params: QuadrotorParams, poles, cancel_coupling=True):
+        """poles: 9 poles ordered by index (roll 0, 1, 6; pitch 2, 3, 7; yaw 4, 5, 8).
+        cancel_coupling: subtract the gyroscopic terms of the model from the torques."""
         self.p = params
         self.cancel_coupling = cancel_coupling
         n = 3
@@ -66,10 +71,11 @@ class AttitudeController:
         self.ei = np.zeros(3)   # integral of the angle error
 
     def reset(self):
+        """Clear the integral of the angle error (call before each run)."""
         self.ei = np.zeros(3)
 
     def compute(self, angles, rates, angles_des, hw):
-        """Return torques [tau1, tau2, tau3]."""
+        """Return the torques [tau1, tau2, tau3] for one sampling period hw and update the integral."""
         e = angles - angles_des
         e[2] = wrap_angle(e[2])
         x_e = np.array([e[0], rates[0], e[1], rates[1], e[2], rates[2]])
@@ -90,6 +96,7 @@ class PositionController:
     """Computes the thrust and desired angles to follow p_ref, v_ref."""
 
     def __init__(self, params: QuadrotorParams, cfg: ControllerConfig):
+        """Takes the PD gains and the tilt and thrust limits from cfg."""
         self.p = params
         self.kp = cfg.kp_pos
         self.kd = cfg.kd_pos
@@ -97,13 +104,18 @@ class PositionController:
         self.T_max = cfg.max_thrust_factor * params.m * params.g
 
     def compute(self, pos, vel, p_ref, v_ref, a_ref, psi_des=0.0):
-        m, g = self.p.m, self.p.g
-
+        """Return (T, [phi_d, theta_d, psi_d]) that drive the drone towards p_ref, v_ref."""
         # Desired acceleration (PD + feedforward)
         a_des = a_ref + self.kp * (p_ref - pos) + self.kd * (v_ref - vel)
+        return self.thrust_and_angles(a_des, psi_des)
+
+    def thrust_and_angles(self, a_des, psi_des=0.0):
+        """Angle transformation: turn a desired acceleration of a particle into the thrust T
+        and the roll/pitch setpoints of the quadrotor (also used by lib/flocking)."""
+        m, g = self.p.m, self.p.g
 
         # Desired force vector including gravity compensation
-        f = m * (a_des + np.array([0.0, 0.0, g]))
+        f = m * (np.asarray(a_des, dtype=float) + np.array([0.0, 0.0, g]))
         f[2] = max(f[2], 0.1 * m * g)        # never ask for negative vertical force
 
         T = np.clip(np.linalg.norm(f), 0.0, self.T_max)

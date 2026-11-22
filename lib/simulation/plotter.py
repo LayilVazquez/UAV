@@ -9,6 +9,7 @@ from lib.simulation.simulator import SimulationResult
 
 
 class Plotter:
+    """Draws the 5 figures of a SimulationResult and saves them as PNG in save_dir."""
 
     def __init__(self, result: SimulationResult, save_dir="results"):
         self.r = result
@@ -17,11 +18,13 @@ class Plotter:
         os.makedirs(save_dir, exist_ok=True)
 
     def _save(self, fig, name):
+        """Keep the figure in self.figures (the GUI shows it) and write it to save_dir."""
         fig.tight_layout()
         self.figures[name] = fig
         fig.savefig(os.path.join(self.save_dir, name), dpi=130)
 
     def plot_position(self):
+        """x, y, z of the drone against the reference."""
         t, X, pr = self.r.time, self.r.X, self.r.pr
         fig, axs = plt.subplots(3, 1, figsize=(8, 7), sharex=True)
         for i, lab in enumerate(["x", "y", "z"]):
@@ -35,6 +38,7 @@ class Plotter:
         self._save(fig, "position.png")
 
     def plot_velocity(self):
+        """vx, vy, vz of the drone against the reference."""
         t, X, vr = self.r.time, self.r.X, self.r.vr
         fig, axs = plt.subplots(3, 1, figsize=(8, 7), sharex=True)
         for i, lab in enumerate(["vx", "vy", "vz"]):
@@ -48,6 +52,7 @@ class Plotter:
         self._save(fig, "velocity.png")
 
     def plot_angles(self):
+        """Roll, pitch, yaw and their setpoints, in degrees."""
         t, X, ad = self.r.time, self.r.X, self.r.angles_des
         fig, axs = plt.subplots(3, 1, figsize=(8, 7), sharex=True)
         for i, lab in enumerate([r"$\phi$", r"$\theta$", r"$\psi$"]):
@@ -61,6 +66,7 @@ class Plotter:
         self._save(fig, "angles.png")
 
     def plot_inputs(self):
+        """Thrust and the 3 torques."""
         t, U = self.r.time[:-1], self.r.U
         fig, axs = plt.subplots(4, 1, figsize=(8, 8), sharex=True)
         labels = ["T [N]", r"$\tau_1$ [Nm]", r"$\tau_2$ [Nm]", r"$\tau_3$ [Nm]"]
@@ -73,6 +79,7 @@ class Plotter:
         self._save(fig, "inputs.png")
 
     def plot_3d(self):
+        """3D path of the drone and of the reference."""
         X, pr = self.r.X, self.r.pr
         fig = plt.figure(figsize=(7, 6))
         ax = fig.add_subplot(111, projection="3d")
@@ -87,6 +94,7 @@ class Plotter:
         self._save(fig, "trajectory_3d.png")
 
     def plot_all(self, show=True):
+        """Draw and save all figures; show=True opens them with plt.show()."""
         self.plot_position()
         self.plot_velocity()
         self.plot_angles()
