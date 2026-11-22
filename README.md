@@ -109,18 +109,20 @@ Inputs are held constant over each period (zero-order hold). `solve_ivp` integra
 
 ## Plant model
 
-```text
-dp  = v + w
-dv1 = T (cos psi sin theta cos phi + sin psi sin phi) / m
-dv2 = T (sin psi sin theta cos phi - cos psi sin phi) / m
-dv3 = T (cos theta cos phi) / m - g
-d(phi, theta, psi) = (wx, wy, wz)
-dwx = (wy wz (Jy - Jz) + tau1) / Jx
-dwy = (wx wz (Jz - Jx) + tau2) / Jy
-dwz = (wx wy (Jx - Jy) + tau3) / Jz
+```math
+\begin{aligned}
+\dot{p} &= v + w \\
+\dot{v}_1 &= \frac{T}{m}\left(\cos\psi \sin\theta \cos\phi + \sin\psi \sin\phi\right) \\
+\dot{v}_2 &= \frac{T}{m}\left(\sin\psi \sin\theta \cos\phi - \cos\psi \sin\phi\right) \\
+\dot{v}_3 &= \frac{T}{m}\cos\theta \cos\phi - g \\
+(\dot{\phi}, \dot{\theta}, \dot{\psi}) &= (\omega_x, \omega_y, \omega_z) \\
+\dot{\omega}_x &= \frac{\omega_y \omega_z (J_y - J_z) + \tau_1}{J_x}, \quad
+\dot{\omega}_y = \frac{\omega_x \omega_z (J_z - J_x) + \tau_2}{J_y}, \quad
+\dot{\omega}_z = \frac{\omega_x \omega_y (J_x - J_y) + \tau_3}{J_z}
+\end{aligned}
 ```
 
-`w` is wind. It only shifts position (`dp = v + w`) and applies no force.
+$`w`$ is wind. It only shifts position ($`\dot{p} = v + w`$) and applies no force.
 
 | Parameter | Value |
 |---|---|
@@ -134,15 +136,19 @@ dwz = (wx wy (Jx - Jy) + tau3) / Jz
 
 ### Outer loop: `PositionController`
 
-```text
-a_des = a_ref + kp (p_ref - p) + kd (v_ref - v)
-f     = m (a_des + [0, 0, g]),  with f_z >= 0.1 m g
-T     = clip(|f|, 0, 2 m g)     # T_max = 37.278 N
-fx_b  =  cos(psi_d) f_x + sin(psi_d) f_y
-fy_b  =  sin(psi_d) f_x - cos(psi_d) f_y
-phi_d   = arcsin(fy_b / |f|)    # then clipped to +/-30 deg
-theta_d = atan2(fx_b, f_z)      # then clipped to +/-30 deg
+```math
+\begin{aligned}
+a_{des} &= a_{ref} + k_p (p_{ref} - p) + k_d (v_{ref} - v) \\
+f &= m \left(a_{des} + [0,\ 0,\ g]^\top\right), \qquad f_z \ge 0.1\, m g \\
+T &= \operatorname{clip}\left(\lVert f \rVert,\ 0,\ 2 m g\right) \qquad (T_{max} = 37.278\ \text{N}) \\
+f_{x,b} &= \cos\psi_d\, f_x + \sin\psi_d\, f_y, \qquad
+f_{y,b} = \sin\psi_d\, f_x - \cos\psi_d\, f_y \\
+\phi_d &= \arcsin\left(f_{y,b} / \lVert f \rVert\right), \qquad
+\theta_d = \operatorname{atan2}\left(f_{x,b},\ f_z\right) \qquad \text{(both then clipped to } \pm 30^\circ)
+\end{aligned}
 ```
+
+The last four lines are the **angle transformation**, `PositionController.thrust_and_angles`. The flocking simulator uses it to turn the acceleration of each particle into thrust and attitude setpoints.
 
 | Axis | `kp` | `kd` | Linear poles (`s² + kd s + kp`) |
 |---|---|---|---|
@@ -151,7 +157,7 @@ theta_d = atan2(fx_b, f_z)      # then clipped to +/-30 deg
 
 ### Inner loop: `AttitudeController`
 
-Each axis is an independent chain of angle, rate and integral of angle error, with `u_i = -k_angle e - k_rate w - k_int ei`. The integrator is forward Euler and updates after `u` is computed. Gyroscopic terms are cancelled when `cancel_coupling=True` (the default).
+Each axis is an independent chain of angle, rate and integral of angle error, with $`u_i = -k_{angle}\, e - k_{rate}\, \omega - k_{int} \int e\, dt`$. The integrator is forward Euler and updates after `u` is computed. Gyroscopic terms are cancelled when `cancel_coupling=True` (the default).
 
 `ControllerConfig.attitude_poles` holds 9 poles. **Their order matters**, because the code assigns them by index:
 
@@ -161,7 +167,7 @@ Each axis is an independent chain of angle, rate and integral of angle error, wi
 | Pitch | 2, 3, 7 | -10.002, -10, -100.006 | 45.367 | 2.592 | 216.056 |
 | Yaw | 4, 5, 8 | -10.002, -10.003, -100.07 | 90.804 | 5.187 | 432.519 |
 
-The gains are computed in the constructor with `scipy.signal.place_poles`, one axis at a time. The class docstring still says `K2 = place(Aa, Ba, Poles)`, but `Aa` and `Ba` are now only used to compute `closed_loop_poles`. Nothing checks that attribute automatically.
+The gains are computed in the constructor with `scipy.signal.place_poles`, one axis at a time. `Aa` and `Ba` are only used to compute `closed_loop_poles`. Nothing checks that attribute automatically.
 
 ## Default scenario
 
@@ -233,7 +239,7 @@ Figures are not stored in Git. On 2026-11-07, the local `results/` matched the c
 | New plot | Add a method to `Plotter` and call it from `plot_all`, then add its title and file name to `FIGURES` in `lib/gui/uav_tab.py` |
 | Flocking parameters, default UAVs | `lib/flocking/config.py`; see [`lib/flocking/README.md`](lib/flocking/README.md) |
 
-**Check stability before changing `hw` or the poles.** For one axis, the sum of its pole magnitudes times `hw` should stay well below 2. This rule of thumb fits the tests: roll gives 120.5 × 0.016 = 1.93 (stable) and 120.5 × 0.018 = 2.17 (diverges).
+**Check stability before changing `hw` or the poles.** For one axis, the sum of its pole magnitudes times `hw` should stay well below 2: $`h_w \sum_k \lvert \lambda_k \rvert \ll 2`$. This rule of thumb fits the tests: roll gives 120.5 × 0.016 = 1.93 (stable) and 120.5 × 0.018 = 2.17 (diverges).
 
 **Divergent runs stop with an error.** `Simulation.run` raises `RuntimeError` when any angle or angular rate exceeds `Simulation.DIVERGENCE_LIMIT` (1000 rad or rad/s) or becomes NaN. Without this check, the `hw = 0.02` run was still going when stopped after 90 s. With it, the divergent cases tried (`hw` = 0.018 and 0.02, poles multiplied by 20 and 100) stop in under 0.1 s.
 

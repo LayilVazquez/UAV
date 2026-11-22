@@ -16,22 +16,38 @@ The theory is written for particles in Euclidean space. Each UAV is turned into 
 
 `FPhi.m` (the potential whose gradient is `phi_alpha`) and `Saturation.m` are not ported: the simulation does not use them. `Simulation01.m` (one drone with PI loops) is covered by the single UAV simulator.
 
+## Functions
+
+The numbers are the equation numbers of the paper. They were checked against the paper on 2026-11-22.
+
+| Paper | Definition | Python |
+|---|---|---|
+| (8) σ-norm | $`\lVert z \rVert_\sigma = \frac{1}{\epsilon}\left[\sqrt{1 + \epsilon \lVert z \rVert^2} - 1\right]`$ | `sigma_norm` |
+| (9) | $`n_{ij} = \frac{p_j - p_i}{\sqrt{1 + \epsilon \lVert p_j - p_i \rVert^2}}`$ | `pairwise` |
+| (10) bump | $`\rho_h(z) = 1`$ on $`[0, h)`$, $`\tfrac{1}{2}\left[1 + \cos\left(\pi \frac{z - h}{1 - h}\right)\right]`$ on $`[h, 1]`$, $`0`$ otherwise | `bump` |
+| (11) adjacency | $`a_{ij} = \rho_h\left(\lVert p_j - p_i \rVert_\sigma / r_\alpha\right)`$, $`a_{ii} = 0`$, $`r_\alpha = \lVert r \rVert_\sigma`$ | `adjacency` |
+| (15) action function | $`\phi_\alpha(z) = \rho_h(z / r_\alpha)\, \phi(z - d_\alpha)`$, $`d_\alpha = \lVert d \rVert_\sigma`$ | `phi_alpha` |
+| (15) | $`\phi(z) = \tfrac{1}{2}\left[(a + b)\, \sigma_1(z + c) + (a - b)\right]`$, $`\sigma_1(z) = \frac{z}{\sqrt{1 + z^2}}`$, $`c = \frac{\lvert a - b \rvert}{\sqrt{4ab}}`$, $`0 < a \le b`$ | `phi`, `sigma_1` |
+
 ## Control law
 
-For UAV `i`, with `s_ij = ||p_j - p_i||_σ`:
+For UAV $`i`$, with $`s_{ij} = \lVert p_j - p_i \rVert_\sigma`$:
 
-```text
-u_i = Σ_j phi_alpha(s_ij) n_ij           gradient: keep the distance d to neighbours
-    + k1 ∘ Σ_j a_ij (v_j - v_i)           consensus on velocity over the graph, a_ij = ρ_h(s_ij / r_α)
-    + k2 ∘ (v0 - v_i)                     follow the leader velocity v0
+```math
+u_i = \underbrace{\sum_{j \ne i} \phi_\alpha(s_{ij})\, n_{ij}}_{\text{gradient: keep the distance } d}
+    + \underbrace{k_1 \circ \sum_{j \ne i} a_{ij} (v_j - v_i)}_{\text{velocity consensus over the graph}}
+    + \underbrace{k_2 \circ (v_0 - v_i)}_{\text{follow the leader velocity}}
 ```
 
-`k1` and `k2` are per-axis gains (`∘` is the element-wise product). UAVs farther apart than `r` have `a_ij = 0` and `phi_alpha = 0`, so they neither interact nor communicate.
+$`k_1`$ and $`k_2`$ are per-axis gains, and $`\circ`$ is the element-wise product. UAVs farther apart than $`r`$ have $`a_{ij} = 0`$ and $`\phi_\alpha = 0`$, so they neither interact nor communicate. The paper sums over the neighbours $`j \in N_i`$; summing over all $`j \ne i`$ gives the same result for that reason.
 
-**Event trigger** (`event_triggered = True`). With `e_i = v_i - v0` and `ê_i` its value at the last event of UAV `i`:
+**Relation to Algorithm 2 of the paper, eq. (24).** In the paper, $`q`$ is position and $`p`$ is velocity (here $`p`$ and $`v`$). The paper's navigational feedback is $`-c_1 (q_i - q_r) - c_2 (p_i - p_r)`$ with $`c_1, c_2 > 0`$. Like the MATLAB code, this simulator has only the velocity part: $`c_2 = k_2`$, $`p_r = v_0`$ and $`c_1 = 0`$. The flock matches the leader's velocity, but no term pulls it towards a rendezvous point. The paper's guarantee against fragmentation assumes $`c_1 > 0`$, so UAVs that start farther than $`r`$ from the rest can split off. The paper also has no gain on the consensus term, which corresponds to $`k_1 = (1, 1, 1)`$, the default.
 
-```text
-f_i = ||ê_i - e_i|| - sqrt(beta) ||e_i||       UAV i sends new data when f_i < kappa
+**Event trigger** (`event_triggered = True`). This comes from the MATLAB code, not from the paper. Let $`e_i = v_i - v_0`$, and let $`\hat{e}_i`$ be its value at the last event of UAV $`i`$:
+
+```math
+f_i = \lVert \hat{e}_i - e_i \rVert - \sqrt{\beta}\, \lVert e_i \rVert,
+\qquad \text{UAV } i \text{ sends new data when } f_i < \kappa
 ```
 
 Between events, UAV `i` keeps its last consensus and leader terms. The gradient term is always computed. This is the logic of `Simulation04.m`.
