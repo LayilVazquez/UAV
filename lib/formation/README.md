@@ -17,15 +17,15 @@ The UAV parameters, poles and sampling time come from `FormationControlAvoidUAV0
 
 ## Notation
 
-**Agents.** $`N`$ UAVs (agents). For agent $`i = 1, \dots, N`$: $`p_i(t) \in \mathbb{R}^m`$ is its position, $`v_i(t) = \dot{p}_i(t) \in \mathbb{R}^m`$ its velocity, and $`u_i(t) = \dot{v}_i(t) \in \mathbb{R}^m`$ its acceleration, which is the control law. $`h_i \in \mathbb{R}^m`$ is its formation offset, and $`v_r(t) \in \mathbb{R}^m`$ is the reference velocity of the formation. The thesis uses $`m \in \{1, 2\}`$. This simulator always works in $`m = 3`$ ($`x, y, z`$). The default offsets have $`h_{i,z} = 0`$, so the formation itself is planar ($`m = 2`$, in the $`xy`$ plane).
+**Agents.** $`N`$ UAVs (agents). For agent $`i = 1, \dots, N`$: $`p_i(t) \in \mathbb{R}^m`$ is its position, $`v_i(t) = \dot{p}_i(t) \in \mathbb{R}^m`$ its velocity, and $`u_i(t) = \dot{v}_i(t) \in \mathbb{R}^m`$ its acceleration, which is the control law. $`h_i \in \mathbb{R}^m`$ is its formation offset, and $`v_r(t) \in \mathbb{R}^m`$ is the reference velocity of the formation. The thesis uses $`m \in \{1, 2\}`$. This simulator always works in $`m = 3`$ ($`x, y, z`$). The default offsets have $`h_{z_i} = 0`$, so the formation itself is planar ($`m = 2`$, in the $`xy`$ plane).
 
-**Communication graph.** The agents communicate over a weighted graph $`\mathcal{G} = (\mathcal{V}, \mathcal{E}, \mathcal{A})`$:
+**Communication graph.** As in the thesis appendix, a directed graph $`\mathcal{G}`$ is a pair $`(\mathcal{V}, \mathcal{E})`$:
 
-- $`\mathcal{V} = \{1, \dots, N\}`$ is the set of nodes, one per agent.
-- $`\mathcal{E} \subseteq \mathcal{V} \times \mathcal{V}`$ is the set of edges. $`(j, i) \in \mathcal{E}`$ means that agent $`i`$ receives the information of agent $`j`$.
-- $`\mathcal{A} = [a_{ij}] \in \mathbb{R}^{N \times N}`$ is the adjacency matrix: $`a_{ij} > 0`$ if $`(j, i) \in \mathcal{E}`$, $`a_{ij} = 0`$ otherwise, and $`a_{ii} = 0`$.
-- $`\mathcal{N}_i = \{ j \in \mathcal{V} : (j, i) \in \mathcal{E} \}`$ is the set of neighbours of agent $`i`$.
-- $`\mathcal{D} = \operatorname{diag}(d_1, \dots, d_N)`$, with $`d_i = \sum_{j \in \mathcal{N}_i} a_{ij}`$, is the degree matrix, and $`\mathcal{L} = \mathcal{D} - \mathcal{A}`$ is the Laplacian. Its eigenvalues are shown in the final formation figure. For an undirected graph, $`\lambda_2(\mathcal{L}) > 0`$ means the graph is connected.
+- $`\mathcal{V} = \{\mathbf{v}_1, \dots, \mathbf{v}_N\}`$ is the node set, one node per agent ($`N`$ agents in total).
+- $`\mathcal{E} = \{ (i, j) : i, j \in \mathcal{V} \} \subseteq \mathcal{V} \times \mathcal{V}`$ is the edge set of ordered pairs. In this simulator, $`(i, j) \in \mathcal{E}`$ means that agent $`i`$ uses the information of agent $`j`$.
+- The neighbours of node $`i`$ are denoted $`j \in \mathcal{N}_i`$, that is, $`(i, j) \in \mathcal{E}`$.
+- $`\mathcal{A} = [a_{ij}] \in \mathbb{R}^{N \times N}`$ is the adjacency matrix: $`a_{ii} = 0`$, $`a_{ij} > 0`$ if and only if $`(i, j) \in \mathcal{E}`$, and $`a_{ij} = 0`$ otherwise.
+- $`\mathcal{L} = [\mathcal{L}_{ij}] \in \mathbb{R}^{N \times N}`$ is the Laplacian: $`\mathcal{L}_{ii} = \sum_{j \ne i} a_{ij}`$ and $`\mathcal{L}_{ij} = -a_{ij}`$ for $`i \ne j`$. Its eigenvalues are shown in the final formation figure. For an undirected graph, $`0 = \lambda_1(\mathcal{L}) \le \lambda_2(\mathcal{L}) \le \dots \le \lambda_N(\mathcal{L})`$, and $`\lambda_2(\mathcal{L}) > 0`$ (exactly one zero eigenvalue) if and only if the graph is connected (thesis Lemma, [Olfati2004]).
 
 The graph table of the formation tab is $`\mathcal{A}`$: row $`i`$, column $`j`$ holds $`a_{ij}`$. In the code it is `FormationController.A`, and $`\mathcal{L}`$ is `laplacian()`.
 
@@ -88,7 +88,7 @@ In the code this is `polygon_offsets(n, side)` in `config.py`. The tab rewrites 
 The avoidance term has no cut-off, so it still acts once the UAVs are in place. On the desired shape, UAV $`i`$ feels
 
 ```math
-F_i(d_a) = -\sum_{j \ne i} a_{ij}\, \psi\left(s(h_{ij}) - d_a\right) h_{ij},
+F_i(d_a) = -\sum_{j \ne i} a_{ij}\, \varrho\left(s(h_{ij}) - d_a\right) h_{ij},
 ```
 
 which pushes close pairs apart ($`s < d_a`$) and pulls distant pairs together ($`s > d_a`$). If $`F_i \ne 0`$, the formation term has to cancel it with an error $`p_{ij} - h_{ij} \ne 0`$. With the MATLAB values ($`\sigma`$-norm, $`d_a = 1.5`$, triangle of side 1.5 m), the triangle settles with sides of about 1.88 m.
@@ -121,10 +121,10 @@ The formation term sends every UAV in a nearly straight line through the centre 
 
 To reproduce the "off" rows, set `a` and `b` to a very small value, for example 0.000001. The tab's **Polygon and crossing start** button rewrites the table with this scenario for any number of UAVs.
 
-**Same altitude.** The offsets have $`h_{i,z} = 0`$ and all UAVs start at $`z = 1`$ m, so the law asks for no vertical motion: particles stay exactly at 1 m. On quadrotors, the 30° tilt limit is reached during the crossing. The thrust used to be computed from the unclipped force, $`T = m \lVert u_i + g e_3 \rVert`$, so a clipped tilt changed each UAV's vertical acceleration differently. The UAVs then spread vertically by up to 0.43 m and climbed to about 1.6 m. The formation tab therefore uses the altitude priority of `thrust_and_angles` (`keep_altitude = True`):
+**Same altitude.** The offsets have $`h_{z_i} = 0`$ and all UAVs start at $`z = 1`$ m, so the law asks for no vertical motion: particles stay exactly at 1 m. On quadrotors, the 30° tilt limit is reached during the crossing. The thrust used to be computed from the unclipped force, $`T_i = m_s \lVert u_i + g e_3 \rVert`$, so a clipped tilt changed each UAV's vertical acceleration differently. The UAVs then spread vertically by up to 0.43 m and climbed to about 1.6 m. The formation tab therefore uses the altitude priority of `thrust_and_angles` (`keep_altitude = True`):
 
 ```math
-T_i = \min\left(\frac{f_{i,z}}{\cos\phi_{d,i} \cos\theta_{d,i}},\ T_{max}\right), \qquad f_i = m \left(u_i + g e_3\right),
+T_i = \min\left(\frac{f_{z_i}}{\cos\phi_{d_i} \cos\theta_{d_i}},\ T_{max}\right), \qquad f_i = m_s \left(u_i + g e_3\right),
 ```
 
 which gives exactly the requested vertical acceleration whenever $`T_i < T_{max}`$. When the tilt is clipped, the horizontal acceleration is reduced instead. When nothing is clipped, this is the same $`T`$ as before. With it, the UAVs stay within 0.04 m of each other in altitude during the crossing, and they end level (within 0.0003 m) at 0.88 m. They dip 12 cm because nothing in the law holds the absolute altitude, only the relative positions. The peak tilt is 35.6°: the 30° limit clips the setpoint, not the actual angle.
@@ -163,7 +163,7 @@ s_{ij} = \lVert p_j - p_i \rVert_\sigma = \frac{1}{\epsilon}\left[\sqrt{1 + \eps
 The control input of agent $`i`$ is then
 
 ```math
-u_i = \underbrace{\sum_{j \in \mathcal{N}_i} a_{ij}\, \psi(s_{ij} - d_a) \left(p_j - p_i\right)}_{\text{collision avoidance}}
+u_i = \underbrace{\sum_{j \in \mathcal{N}_i} a_{ij}\, \varrho(s_{ij} - d_a) \left(p_j - p_i\right)}_{\text{collision avoidance}}
     + \underbrace{k_p \sum_{j \in \mathcal{N}_i} a_{ij} \left[p_j - p_i - \left(h_j - h_i\right)\right]}_{\text{formation}}
     + \underbrace{k_v \sum_{j \in \mathcal{N}_i} a_{ij} \left[v_j - v_i\right]}_{\text{velocity consensus}}
     - \underbrace{k_0 \left(v_i - v_r\right)}_{\text{reference velocity}}
@@ -174,18 +174,18 @@ With $`k_p = k_v = k_0 = 1`$ and without the avoidance term ($`a = b \to 0`$), t
 The uneven sigmoid is
 
 ```math
-\psi(z) = \frac{1}{2}\left[(a + b)\, \frac{z + c}{\sqrt{1 + (z + c)^2}} + (a - b)\right],
+\varrho(z) = \frac{1}{2}\left[(a + b)\, \frac{z + c}{\sqrt{1 + (z + c)^2}} + (a - b)\right],
 \qquad c = \frac{\lvert a - b \rvert}{\sqrt{4ab}}, \qquad 0 < a \le b .
 ```
 
-$`c`$ makes $`\psi(0) = 0`$. For $`s_{ij} < d_a`$, $`\psi < 0`$ (down to $`-b`$), and the term pushes agent $`i`$ away from agent $`j`$. For $`s_{ij} > d_a`$, $`\psi > 0`$ (up to $`a`$), and it pulls them together.
+$`c`$ makes $`\varrho(0) = 0`$. For $`s_{ij} < d_a`$, $`\varrho < 0`$ (down to $`-b`$), and the term pushes agent $`i`$ away from agent $`j`$. For $`s_{ij} > d_a`$, $`\varrho > 0`$ (up to $`a`$), and it pulls them together. The sigmoid is written $`\varrho`$ because $`\psi_i`$ is the yaw angle of the UAV model; in the code it is `phi` of `lib/flocking/functions.py`.
 
 The MATLAB code writes the sums with the Laplacian, whose off-diagonal entries are $`\mathcal{L}_{ij} = -a_{ij}`$, as $`\sum_{j \ne i} \mathcal{L}_{ij} [\dots]`$ with $`p_{ij}`$ in place of $`p_j - p_i`$: the two minus signs cancel. Only the off-diagonal entries are used, so the diagonal of `La` in `FormationControlAvoid.m` (3 instead of 2) does not change the result. The MATLAB code has $`k_p = k_v = k_0 = 1`$.
 
 **Points to keep in mind when reading the results:**
 
 - With the σ-norm, $`d_a`$ is compared with $`\lVert p_{ij} \rVert_\sigma`$, not with the distance in metres. For example, with $`\epsilon = 0.5`$, $`d_a = 1.5`$ corresponds to a Euclidean distance of about 2.03 m. The balanced $`d_a`$ above takes this into account.
-- The avoidance force is $`\psi \, p_{ij}`$, so its size is $`\lvert\psi\rvert \lVert p_{ij} \rVert \le b \lVert p_{ij} \rVert`$. It vanishes as two UAVs get very close, so the law alone cannot guarantee that they never touch; the margin depends on $`a`$, $`b`$, the gains and the start.
+- The avoidance force is $`\varrho \, p_{ij}`$, so its size is $`\lvert\varrho\rvert \lVert p_{ij} \rVert \le b \lVert p_{ij} \rVert`$. It vanishes as two UAVs get very close, so the law alone cannot guarantee that they never touch; the margin depends on $`a`$, $`b`$, the gains and the start.
 - The avoidance term has no cut-off. Every pair linked in the graph interacts at any distance, and pairs not linked ($`j \notin \mathcal{N}_i`$) do not avoid each other.
 
 ### From particles to UAVs
@@ -193,12 +193,13 @@ The MATLAB code writes the sums with the Laplacian, whose off-diagonal entries a
 With UAV dynamics on, $`u_i`$ goes through the same angle transformation as the other simulators, `PositionController.thrust_and_angles` (see [`lib/simulation`](../simulation/README.md)):
 
 ```math
-T_i = m \left\lVert u_i + g e_3 \right\rVert, \qquad
-\phi_{d,i} = \arcsin\left(\frac{-u_{i,2}}{\lVert u_i + g e_3 \rVert}\right), \qquad
-\theta_{d,i} = \arctan\left(\frac{u_{i,1}}{u_{i,3} + g}\right), \qquad \psi_{d,i} = 0
+\psi_{d_i} = 0, \qquad
+\theta_{d_i} = \arctan\left(\frac{u_{x_i}}{u_{z_i} + g}\right), \qquad
+\phi_{d_i} = \arcsin\left(\frac{-u_{y_i}}{\sqrt{u_{x_i}^2 + u_{y_i}^2 + (u_{z_i} + g)^2}}\right), \qquad
+T_i = m_s \sqrt{u_{x_i}^2 + u_{y_i}^2 + (u_{z_i} + g)^2}
 ```
 
-Each UAV's `AttitudeController` then tracks these angles. Python adds tilt and thrust limits, which the MATLAB code doesn't have. In this simulator, the thrust keeps the vertical force when the tilt is clipped (altitude priority, see [Same altitude](#initial-conditions-that-test-the-avoidance)).
+Here $`u_i = [u_{x_i}, u_{y_i}, u_{z_i}]^T`$, $`m_s`$ is the quadrotor mass and $`(\phi_i, \theta_i, \psi_i)`$ are the Euler angles, as in the thesis. Each UAV's `AttitudeController` then tracks these angles. Python adds tilt and thrust limits, which the MATLAB code doesn't have. In this simulator, the thrust keeps the vertical force when the tilt is clipped (altitude priority, see [Same altitude](#initial-conditions-that-test-the-avoidance)).
 
 With UAV dynamics off, each UAV is an ideal particle, integrated with explicit Euler as in MATLAB:
 
