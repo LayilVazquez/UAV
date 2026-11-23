@@ -43,11 +43,19 @@ class FormationPlotter(FlockingPlotter):
         ax.set_xlabel("x [m]")
         ax.set_ylabel("y [m]")
         ax.set_zlabel("z [m]")
+        # same span on x, y, z (a cube around the flock): a few cm of altitude spread no longer fills the z axis
+        pts = np.vstack([P, target])
+        centre, half = (pts.max(axis=0) + pts.min(axis=0)) / 2, max(np.ptp(pts, axis=0).max() / 2, 0.5)
+        ax.set_xlim(centre[0] - half, centre[0] + half)
+        ax.set_ylim(centre[1] - half, centre[1] + half)
+        ax.set_zlim(centre[2] - half, centre[2] + half)
+        ax.set_box_aspect((1, 1, 1))
         self._legend(ax)
         self._save(fig, "final_formation.png")
 
     def plot_distances(self):
-        """Distance and formation error of every pair; the closest approach checks for collisions."""
+        """Distance and consensus error ||(p_i - h_i) - (p_j - h_j)|| of every pair; the formation is reached
+        when every consensus error goes to 0. The closest approach checks for collisions."""
         X, t, H = self.r.X, self.r.time, self.ctrl.H
         fig, axs = plt.subplots(2, 1, figsize=(8, 7), sharex=True)
         closest = np.inf
@@ -56,12 +64,13 @@ class FormationPlotter(FlockingPlotter):
             dist = np.linalg.norm(rel, axis=0)
             closest = min(closest, dist.min())
             axs[0].plot(t, dist, label=f"{i + 1}-{j + 1}")
-            axs[1].plot(t, np.linalg.norm(rel - (H[i] - H[j])[:, None], axis=0), label=f"{i + 1}-{j + 1}")
+            consensus = (X[i, 0:3] - H[i][:, None]) - (X[j, 0:3] - H[j][:, None])   # (p_i - h_i) - (p_j - h_j)
+            axs[1].plot(t, np.linalg.norm(consensus, axis=0), label=f"{i + 1}-{j + 1}")
         axs[0].axhline(self.cfg.collision_distance, color="r", ls="--", label="collision")
         axs[0].set_ylabel(r"$\|p_i - p_j\|$ [m]")
         axs[0].set_title(f"Distances (closest approach {closest:.3f} m)" if np.isfinite(closest) else "Distances")
-        axs[1].set_ylabel(r"$\|(p_i - p_j) - (h_i - h_j)\|$ [m]")
-        axs[1].set_title("Formation error")
+        axs[1].set_ylabel(r"$\|(p_i - h_i) - (p_j - h_j)\|$ [m]")
+        axs[1].set_title("Formation consensus error (formation reached when every pair goes to 0)")
         axs[1].set_xlabel("time [s]")
         for ax in axs:
             ax.grid(True)

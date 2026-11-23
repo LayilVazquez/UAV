@@ -1,6 +1,6 @@
 # `lib/formation`: formation control with collision avoidance
 
-N UAVs reach a formation given by an offset $`h_i`$ for each UAV, while they avoid each other, agree on their velocities over a communication graph and follow a leader velocity. This control law is an original, unpublished contribution of the author of this repository. **No stability proof exists yet**: the simulator is a tool to study its behaviour.
+N UAVs reach a formation given by an offset $`h_i`$ for each UAV, while they avoid each other, agree on their velocities over a communication graph and follow a reference velocity $`v_r`$. This control law is an original, unpublished contribution of the author of this repository. **No stability proof exists yet**: the simulator is a tool to study its behaviour.
 
 It is a port of `MATLAB_code/scr/Formation_Control_Avoid` (local only):
 
@@ -12,8 +12,32 @@ It is a port of `MATLAB_code/scr/Formation_Control_Avoid` (local only):
 | `FormationControlAvoidUAV02.m` | Quadrotors | σ-norm | UAV dynamics on, σ-norm on |
 | `Psi.m`, `NSigma.m` | | | `phi` and `sigma_norm` of `lib/flocking/functions.py` (the same formulas) |
 
-The UAV parameters, poles and sampling time come from `FormationControlAvoidUAV02.m`. The default scenario is new: 8 UAVs cross each other's paths to form a regular octagon of side 1 m. It uses Euclidean distance, $`a = 1`$, $`b = 20`$, a complete graph, $`v_0 = 0`$ and 30 s. To return to the MATLAB scenario, set 3 UAVs, side 1.5, the MATLAB initial positions, the σ-norm with $`\epsilon = 0.5`$, $`b = 10`$, $`d_a = 1.5`$ with the balancing off, and 100 s.
+The UAV parameters, poles and sampling time come from `FormationControlAvoidUAV02.m`. The default scenario is new: 8 UAVs cross each other's paths to form a regular octagon of side 1 m. It uses Euclidean distance, $`a = 1`$, $`b = 20`$, a complete graph, $`v_r = 0`$ and 30 s. To return to the MATLAB scenario, set 3 UAVs, side 1.5, the MATLAB initial positions, the σ-norm with $`\epsilon = 0.5`$, $`b = 10`$, $`d_a = 1.5`$ with the balancing off, and 100 s.
 
+
+## Notation
+
+**Agents.** $`N`$ UAVs (agents). For agent $`i = 1, \dots, N`$: $`p_i(t) \in \mathbb{R}^m`$ is its position, $`v_i(t) = \dot{p}_i(t) \in \mathbb{R}^m`$ its velocity, and $`u_i(t) = \dot{v}_i(t) \in \mathbb{R}^m`$ its acceleration, which is the control law. $`h_i \in \mathbb{R}^m`$ is its formation offset, and $`v_r(t) \in \mathbb{R}^m`$ is the reference velocity of the formation. The thesis uses $`m \in \{1, 2\}`$. This simulator always works in $`m = 3`$ ($`x, y, z`$). The default offsets have $`h_{i,z} = 0`$, so the formation itself is planar ($`m = 2`$, in the $`xy`$ plane).
+
+**Communication graph.** The agents communicate over a weighted graph $`\mathcal{G} = (\mathcal{V}, \mathcal{E}, \mathcal{A})`$:
+
+- $`\mathcal{V} = \{1, \dots, N\}`$ is the set of nodes, one per agent.
+- $`\mathcal{E} \subseteq \mathcal{V} \times \mathcal{V}`$ is the set of edges. $`(j, i) \in \mathcal{E}`$ means that agent $`i`$ receives the information of agent $`j`$.
+- $`\mathcal{A} = [a_{ij}] \in \mathbb{R}^{N \times N}`$ is the adjacency matrix: $`a_{ij} > 0`$ if $`(j, i) \in \mathcal{E}`$, $`a_{ij} = 0`$ otherwise, and $`a_{ii} = 0`$.
+- $`\mathcal{N}_i = \{ j \in \mathcal{V} : (j, i) \in \mathcal{E} \}`$ is the set of neighbours of agent $`i`$.
+- $`\mathcal{D} = \operatorname{diag}(d_1, \dots, d_N)`$, with $`d_i = \sum_{j \in \mathcal{N}_i} a_{ij}`$, is the degree matrix, and $`\mathcal{L} = \mathcal{D} - \mathcal{A}`$ is the Laplacian. Its eigenvalues are shown in the final formation figure. For an undirected graph, $`\lambda_2(\mathcal{L}) > 0`$ means the graph is connected.
+
+The graph table of the formation tab is $`\mathcal{A}`$: row $`i`$, column $`j`$ holds $`a_{ij}`$. In the code it is `FormationController.A`, and $`\mathcal{L}`$ is `laplacian()`.
+
+**Shorthand.** $`p_{ij} = p_i - p_j`$, $`v_{ij} = v_i - v_j`$, $`h_{ij} = h_i - h_j`$.
+
+**Formation consensus.** The agents reach the formation in a consensus if
+
+```math
+\lim_{t \to \infty} \left\lVert \left(p_i(t) - h_i\right) - \left(p_j(t) - h_j\right) \right\rVert = 0, \qquad \forall\, i, j \in \mathcal{V} .
+```
+
+The distances figure plots this consensus error, $`\lVert (p_i - h_i) - (p_j - h_j) \rVert`$, for every pair $`i < j`$, neighbours or not. The formation is reached when all of them go to 0.
 
 ## Desired shape: the offsets $`h_i`$
 
@@ -25,7 +49,7 @@ The offsets enter the control law only through $`h_{ij} = h_i - h_j`$. Adding th
 p_i = \bar{p} + \left(h_i - \bar{h}\right), \qquad \bar{p} = \frac{1}{N}\sum_{k=1}^{N} p_k, \qquad \bar{h} = \frac{1}{N}\sum_{k=1}^{N} h_k .
 ```
 
-The shape is fixed by the offsets. Its position is wherever the centroid $`\bar{p}`$ goes, which depends on the initial positions and on the leader velocity $`v_0`$. With $`v_0 = 0`$, the UAVs end at rest and hover in the shape.
+The shape is fixed by the offsets. Its position is wherever the centroid $`\bar{p}`$ goes, which depends on the initial positions and on the reference velocity $`v_r`$. With $`v_r = 0`$, the UAVs end at rest and hover in the shape.
 
 ### Regular polygon with $`N`$ UAVs and side $`\ell`$
 
@@ -88,7 +112,7 @@ c = (0, 0, 1)^\top,\ \alpha = 170^\circ,\ v_i(0) = 0 .
 
 The formation term sends every UAV in a nearly straight line through the centre region, all at the same time. Turning by 170° instead of 180° breaks the symmetry, so the UAVs can go round each other instead of meeting head-on. In the code this is `crossing_start(offsets)`, with `START_ROTATION` and `START_SCALE` (here 1) in `config.py`. Measured over 30 s with the default parameters:
 
-| Run | Closest approach | Final formation error |
+| Run | Closest approach | Final consensus error |
 |---|---|---|
 | Particles, with avoidance | 0.313 m | below 0.0001 m |
 | Particles, avoidance off ($`a = b \approx 0`$) | **0.087 m** (below the 0.2 m collision line) | 0 |
@@ -120,47 +144,49 @@ The avoidance term acts only between linked pairs ($`a_{ij} > 0`$). Two UAVs wit
 
 ## Control law
 
-Let $`p_{ij} = p_i - p_j`$, $`v_{ij} = v_i - v_j`$ and $`h_{ij} = h_i - h_j`$. The distance $`s_{ij}`$ is either the Euclidean norm or the σ-norm:
+The basic formation control law, as in the thesis, is
 
 ```math
-s_{ij} = \lVert p_{ij} \rVert
+u_i(t) = \sum_{j \in \mathcal{N}_i} a_{ij} \left[ p_j(t) - p_i(t) - \left(h_j - h_i\right) \right]
+       + \sum_{j \in \mathcal{N}_i} a_{ij} \left[ v_j(t) - v_i(t) \right]
+       - \left( v_i(t) - v_r(t) \right).
+```
+
+The simulator adds a collision avoidance term and a gain on each term. The distance $`s_{ij}`$ between agents $`i`$ and $`j`$ is either the Euclidean norm or the σ-norm:
+
+```math
+s_{ij} = \lVert p_j - p_i \rVert
 \qquad \text{or} \qquad
-s_{ij} = \lVert p_{ij} \rVert_\sigma = \frac{1}{\epsilon}\left[\sqrt{1 + \epsilon \lVert p_{ij} \rVert^2} - 1\right]
+s_{ij} = \lVert p_j - p_i \rVert_\sigma = \frac{1}{\epsilon}\left[\sqrt{1 + \epsilon \lVert p_j - p_i \rVert^2} - 1\right]
 ```
 
-The control input of UAV $`i`$ (a desired acceleration) is
+The control input of agent $`i`$ is then
 
 ```math
-u_i = -\sum_{j \ne i} a_{ij} \Big[
-      \underbrace{\psi(s_{ij} - d_a)\, p_{ij}}_{\text{collision avoidance}}
-    + \underbrace{k_p \left(p_{ij} - h_{ij}\right)}_{\text{formation}}
-    + \underbrace{k_v\, v_{ij}}_{\text{velocity consensus}}
-    \Big]
-    + \underbrace{k_0 \left(v_0 - v_i\right)}_{\text{leader velocity}}
+u_i = \underbrace{\sum_{j \in \mathcal{N}_i} a_{ij}\, \psi(s_{ij} - d_a) \left(p_j - p_i\right)}_{\text{collision avoidance}}
+    + \underbrace{k_p \sum_{j \in \mathcal{N}_i} a_{ij} \left[p_j - p_i - \left(h_j - h_i\right)\right]}_{\text{formation}}
+    + \underbrace{k_v \sum_{j \in \mathcal{N}_i} a_{ij} \left[v_j - v_i\right]}_{\text{velocity consensus}}
+    - \underbrace{k_0 \left(v_i - v_r\right)}_{\text{reference velocity}}
 ```
 
-with the uneven sigmoid
+With $`k_p = k_v = k_0 = 1`$ and without the avoidance term ($`a = b \to 0`$), this is the basic law above. In the code and the tab, $`v_r`$ is the field `v0` (constant), and the gains are `kp`, `kv` and `k0`.
+
+The uneven sigmoid is
 
 ```math
 \psi(z) = \frac{1}{2}\left[(a + b)\, \frac{z + c}{\sqrt{1 + (z + c)^2}} + (a - b)\right],
 \qquad c = \frac{\lvert a - b \rvert}{\sqrt{4ab}}, \qquad 0 < a \le b .
 ```
 
-$`c`$ makes $`\psi(0) = 0`$. For $`s_{ij} < d_a`$, $`\psi < 0`$ (down to $`-b`$) and the term pushes UAV $`i`$ away from UAV $`j`$; for $`s_{ij} > d_a`$, $`\psi > 0`$ (up to $`a`$) and it pulls them together.
+$`c`$ makes $`\psi(0) = 0`$. For $`s_{ij} < d_a`$, $`\psi < 0`$ (down to $`-b`$), and the term pushes agent $`i`$ away from agent $`j`$. For $`s_{ij} > d_a`$, $`\psi > 0`$ (up to $`a`$), and it pulls them together.
 
-The MATLAB code writes the sum with the graph Laplacian $`L = \Delta(A) - A`$, whose off-diagonal entries are $`L_{ij} = -a_{ij}`$:
-
-```math
-u_i = \sum_{j \ne i} L_{ij} \left[\psi(s_{ij} - d_a)\, p_{ij} + k_p (p_{ij} - h_{ij}) + k_v v_{ij}\right] + k_0 (v_0 - v_i).
-```
-
-Only the off-diagonal entries are used, so the diagonal of `La` in `FormationControlAvoid.m` (3 instead of 2) does not change the result. The MATLAB code has $`k_p = k_v = k_0 = 1`$.
+The MATLAB code writes the sums with the Laplacian, whose off-diagonal entries are $`\mathcal{L}_{ij} = -a_{ij}`$, as $`\sum_{j \ne i} \mathcal{L}_{ij} [\dots]`$ with $`p_{ij}`$ in place of $`p_j - p_i`$: the two minus signs cancel. Only the off-diagonal entries are used, so the diagonal of `La` in `FormationControlAvoid.m` (3 instead of 2) does not change the result. The MATLAB code has $`k_p = k_v = k_0 = 1`$.
 
 **Points to keep in mind when reading the results:**
 
 - With the σ-norm, $`d_a`$ is compared with $`\lVert p_{ij} \rVert_\sigma`$, not with the distance in metres. For example, with $`\epsilon = 0.5`$, $`d_a = 1.5`$ corresponds to a Euclidean distance of about 2.03 m. The balanced $`d_a`$ above takes this into account.
 - The avoidance force is $`\psi \, p_{ij}`$, so its size is $`\lvert\psi\rvert \lVert p_{ij} \rVert \le b \lVert p_{ij} \rVert`$. It vanishes as two UAVs get very close, so the law alone cannot guarantee that they never touch; the margin depends on $`a`$, $`b`$, the gains and the start.
-- The avoidance term has no cut-off. Every pair linked in the graph interacts at any distance, and pairs not linked ($`a_{ij} = 0`$) do not avoid each other.
+- The avoidance term has no cut-off. Every pair linked in the graph interacts at any distance, and pairs not linked ($`j \notin \mathcal{N}_i`$) do not avoid each other.
 
 ### From particles to UAVs
 
@@ -187,7 +213,7 @@ p_i(k+1) = p_i(k) + h_w\, v_i(k), \qquad v_i(k+1) = v_i(k) + h_w\, u_i(k)
 | `config.py` | `FormationConfig` (`a`, `b`, `d_a`, `balance_d_a`, `use_sigma_norm`, `epsilon`, `kp`, `kv`, `k0`, `v0`, `collision_distance`, derived `c`). The UAV parameters of `FormationControlAvoidUAV02.m`: `FORMATION_QUADROTOR`, `FORMATION_POLES`, `FORMATION_SIMULATION` (30 s, `hw = 0.01`). The default scenario: `DEFAULT_UAVS` (8), `DEFAULT_SIDE` (1 m), `polygon_offsets(n, side)`, `crossing_start(offsets)`, `default_agent(i, n, side)`, and `complete_graph(n)` |
 | `controller.py` | `FormationController(cfg, adjacency, offsets)`: `compute(P, V)` returns all $`u_i`$ at once (vectorised over pairs), `laplacian()` returns $`L`$, `balanced_d_a()` solves for the shape-preserving $`d_a`$, and `d_a` is the value in use. It has the same interface as `FlockingController` (`reset`, `compute` returning `u` and an events vector, here always true) |
 | `simulator.py` | `ParticleSimulation`: the double-integrator loop. It returns a `FlockingResult` with zero angles and inputs, so the same plotter works |
-| `plotter.py` | `FormationPlotter`, a subclass of `FlockingPlotter` that reuses its trajectory, velocity, control and angle figures. It adds the final formation (graph links, the desired shape centred on the flock, the $`d_a`$ used, Laplacian eigenvalues) and the distances (every pair, with the collision line and the closest approach, plus the formation error $`\lVert p_{ij} - h_{ij} \rVert`$) |
+| `plotter.py` | `FormationPlotter`, a subclass of `FlockingPlotter` that reuses its trajectory, velocity, control and angle figures. It adds the final formation (graph links, the desired shape centred on the flock, the $`d_a`$ used, Laplacian eigenvalues). That figure is drawn in a cube with the same span on $`x, y, z`$, so a few cm of altitude spread does not stretch the shape. It also adds the distances (every pair, with the collision line and the closest approach, plus the formation consensus error $`\lVert (p_i - h_i) - (p_j - h_j) \rVert`$) |
 
 ## How the classes interact
 
@@ -206,7 +232,7 @@ Used by: `lib/gui/formation_tab.py` and `test/run_formation_scenario.py`.
 The simulator shows the quantities an analysis would use:
 
 - The Laplacian eigenvalues, in the title of the final formation figure. $`\lambda_2 > 0`$ means the graph is connected.
-- The formation error of each pair.
+- The formation consensus error $`\lVert (p_i - h_i) - (p_j - h_j) \rVert`$ of each pair.
 - The closest approach.
 
 Varying $`k_p`$, $`k_v`$, $`a`$, $`b`$, $`d_a`$ and the graph, in particle mode first, separates the behaviour of the law from the effect of the attitude loop.

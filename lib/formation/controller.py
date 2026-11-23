@@ -1,12 +1,13 @@
 """
 controller.py
-Formation control with collision avoidance (FormationControlAvoid*.m), for N particles:
+Formation control with collision avoidance (FormationControlAvoid*.m), for N agents with neighbours N_i:
 
-    u_i = - sum_j a_ij [ psi(s_ij - d_a) (p_i - p_j)            avoidance: repel closer than d_a
-                         + kp ((p_i - p_j) - (h_i - h_j))        formation: keep the offsets h
-                         + kv (v_i - v_j) ]                      velocity consensus
-          + k0 (v0 - v_i)                                        leader velocity
+    u_i =   sum_{j in N_i} a_ij psi(s_ij - d_a) (p_j - p_i)                 avoidance: repel closer than d_a
+          + kp sum_{j in N_i} a_ij [(p_j - p_i) - (h_j - h_i)]              formation: keep the offsets h
+          + kv sum_{j in N_i} a_ij (v_j - v_i)                              velocity consensus
+          - k0 (v_i - v_r)                                                  reference velocity (cfg.v0)
 
+Formation consensus: ||(p_i - h_i) - (p_j - h_j)|| -> 0 for every pair i, j.
 The MATLAB code writes it with the Laplacian, L_ij = -a_ij for j != i.
 With cfg.balance_d_a, d_a is chosen so the avoidance forces cancel on the desired shape (see README.md).
 """

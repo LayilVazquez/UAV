@@ -4,7 +4,7 @@ Three simulators in one window, one tab each:
 
 - **UAV simulator**: closed-loop simulation of a 12-state quadrotor following a virtual leader that moves at constant velocity. A PD position controller (outer loop) drives a PI attitude controller designed by pole placement (inner loop).
 - **UAV flocking**: N quadrotors flocking with the Olfati-Saber algorithm and event-triggered communication. An angle transformation turns each UAV into a particle in Euclidean space. See [`lib/flocking/README.md`](lib/flocking/README.md).
-- **Formation control**: N quadrotors, or ideal particles, reach a formation given by offsets while they avoid collisions, agree on their velocities over a weighted communication graph and follow a leader velocity. This is an original, unpublished control law whose stability is not proven yet. See [`lib/formation/README.md`](lib/formation/README.md).
+- **Formation control**: N quadrotors, or ideal particles, reach a formation given by offsets while they avoid collisions, agree on their velocities over a weighted communication graph and follow a reference velocity. This is an original, unpublished control law whose stability is not proven yet. See [`lib/formation/README.md`](lib/formation/README.md).
 
 All three are ports of MATLAB models. The MATLAB simulations are kept locally in `MATLAB_code/`, which Git ignores.
 
@@ -79,8 +79,8 @@ The default scenario has 8 UAVs that start almost opposite their places, so thei
 - **Choose dₐ to keep the shape** (on) computes `dₐ` so the avoidance forces cancel on the desired shape. The `dₐ` field is then disabled, and the value used appears in the final formation figure.
 - **Communication graph:** an N × N table of weights `a_ij`, where 0 means no link. It resizes with the number of UAVs (up to 30).
 - **UAV dynamics** (on) runs quadrotors. Off, it runs ideal particles (`FormationControlAvoid.m`, `...02.m`), where the drone, pole and limit fields are not used. **Use σ-norm distance** switches between the `02` files and the Euclidean ones.
-- **Parameters:** avoidance `a`, `b`, `dₐ`, `ε`, and the collision distance used in the plot; gains `kp` (formation), `kv` (velocity consensus), `k0` (leader) and the leader velocity `v0`.
-- **6 figures:** the 3D trajectories, the final formation with the graph links, the desired shape and the Laplacian eigenvalues, velocities, the control law, Euler angles, and the distances (every pair with the collision line and the closest approach, and the formation error). The PNG names start with `formation_`.
+- **Parameters:** avoidance `a`, `b`, `dₐ`, `ε`, and the collision distance used in the plot; gains `kp` (formation), `kv` (velocity consensus), `k0` (reference velocity) and the reference velocity `v0` (v_r in the equations).
+- **6 figures:** the 3D trajectories, the final formation with the graph links, the desired shape and the Laplacian eigenvalues (same scale on x, y and z, so the shape is not stretched), velocities, the control law, Euler angles, and the distances. The distances figure shows every pair with the collision line and the closest approach, and the formation consensus error ‖(p_i − h_i) − (p_j − h_j)‖, which goes to 0 when the formation is reached. The PNG names start with `formation_`.
 
 ## Repository layout
 
